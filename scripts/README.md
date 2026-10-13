@@ -38,7 +38,7 @@ Set `ASKMYDASMA_START_DATASET_PATH=data/eau-1500.csv` for a shorter sample.
 - the application also provides two historical presets:
   - `data/component_2022-fixed.csv`
   - `data/131_OPPORTUNITY-1000.csv`
-- `bash stop.sh` stops the web backend, stops the Docker stack, and cleans project volumes; the historical `pip-cache` volume may remain for compatibility, but Compose-managed Python services no longer install dependencies at runtime
+- `bash stop.sh` stops the web backend and Docker stack, then removes only volumes labeled for the resolved Compose project; it keeps `pip-cache` and other projects' volumes
 
 `start.sh` can be customized with:
 

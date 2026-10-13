@@ -122,7 +122,7 @@ Recommended shutdown and cleanup:
 bash stop.sh
 ```
 
-`stop.sh` stops the AskMyDasma backend, stops the Docker stack, and then removes project volumes. The historical `pip-cache` volume may remain for compatibility, but Compose-managed Python services no longer install dependencies at runtime.
+`stop.sh` stops the AskMyDasma backend and Docker stack, then removes volumes labeled for the resolved Compose project. It keeps `pip-cache` and does not prune other projects' volumes. Compose-managed Python services install dependencies at image build time.
 
 `start.sh` prepares missing images before launching Compose. Public images are
 pulled from their registries. Project images declared with a Compose `build:`

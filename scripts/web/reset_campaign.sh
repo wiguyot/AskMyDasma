@@ -6,6 +6,7 @@ cd "$ROOT_DIR"
 
 PROGRESS_FILE="${ASKMYDASMA_LAUNCH_PROGRESS_FILE:-$ROOT_DIR/.tmp/askmydasma-launch-progress.log}"
 CONFIG_HELPER="$ROOT_DIR/scripts/web/campaign_config.py"
+PROJECT_NAME="$(docker compose config --format json | python3 -c 'import json, sys; print(json.load(sys.stdin)["name"])')"
 mkdir -p "$(dirname "$PROGRESS_FILE")"
 
 log_progress() {
@@ -20,7 +21,6 @@ bash "$ROOT_DIR/scripts/docker/pull_missing_images.sh" init-topic influxdb schem
 log_progress "[launch] ensuring kafka readiness"
 docker compose up --pull never --wait --wait-timeout 240 kafka1 kafka2 kafka3 schema-registry >/dev/null
 
-PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$ROOT_DIR")}"
 INFLUX_VOLUME="${PROJECT_NAME}_influxdb-data"
 
 TOPICS=()

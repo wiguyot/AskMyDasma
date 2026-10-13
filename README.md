@@ -583,7 +583,7 @@ Recommended shutdown:
 bash stop.sh
 ```
 
-`stop.sh` stops the AskMyDasma web backend (host process or container), runs `docker compose down --remove-orphans`, and removes project volumes. The historical `pip-cache` volume may remain for compatibility, but the Compose-managed Python services no longer depend on runtime package installation.
+`stop.sh` stops the AskMyDasma web backend (host process or container), runs `docker compose down --remove-orphans`, and removes volumes labeled for the resolved Compose project. It keeps `pip-cache` and does not prune volumes belonging to other projects. Compose-managed Python services no longer depend on runtime package installation.
 
 ### Backend Modes
 

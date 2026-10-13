@@ -5,7 +5,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP_DIR="${ROOT_DIR}/.tmp"
 BACKEND_PID_FILE="${TMP_DIR}/askmydasma-backend.pid"
-COMPOSE_PROJECT="${COMPOSE_PROJECT_NAME:-$(basename "${ROOT_DIR}")}"
+# Use Compose's resolved name, including directory normalization and overrides.
+# Resolve it before stopping anything so invalid configuration fails early.
+COMPOSE_PROJECT="$(docker compose \
+  --project-directory "${ROOT_DIR}" \
+  --file "${ROOT_DIR}/docker-compose.yml" \
+  config --format json | python3 -c 'import json, sys; print(json.load(sys.stdin)["name"])')"
 
 compose() {
   docker compose \
@@ -56,7 +61,7 @@ stop_backend() {
 }
 
 cleanup_volumes() {
-  local project="${COMPOSE_PROJECT_NAME:-$(basename "${ROOT_DIR}")}"
+  local project="${COMPOSE_PROJECT}"
   local keep_project="${project}_pip-cache"
   local keep_global="pip-cache"
   local volumes=()
@@ -75,54 +80,19 @@ cleanup_volumes() {
 
     label_project="$(docker volume inspect "${volume}" --format '{{ index .Labels "com.docker.compose.project" }}' 2>/dev/null || true)"
 
-    if [ "${label_project}" = "${project}" ] || [[ "${volume}" == "${project}_"* ]]; then
+    if [ "${label_project}" = "${project}" ]; then
       volumes+=("${volume}")
     fi
   done < <(docker volume ls -q)
 
   if [ "${#volumes[@]}" -eq 0 ]; then
-    echo "[stop] No labeled or prefixed project volume to remove, excluding pip-cache."
+    echo "[stop] No labeled project volume to remove, excluding pip-cache."
   else
     echo "[stop] Volumes to remove:"
     printf ' - %s\n' "${volumes[@]}"
     docker volume rm "${volumes[@]}" >/dev/null
   fi
 
-  local all_volumes=()
-  while IFS= read -r volume; do
-    [ -z "${volume}" ] && continue
-    if [ "${volume}" = "${keep_project}" ] || [ "${volume}" = "${keep_global}" ]; then
-      continue
-    fi
-    all_volumes+=("${volume}")
-  done < <(docker volume ls -q)
-
-  if [ "${#all_volumes[@]}" -gt 0 ]; then
-    echo "[stop] Cleaning remaining volumes except pip-cache..."
-
-    local container_ids
-    for volume in "${all_volumes[@]}"; do
-      container_ids="$(docker ps -a -q --filter "volume=${volume}" --filter "status=exited" --filter "status=created" --filter "status=dead" || true)"
-      if [ -n "${container_ids}" ]; then
-        echo "[stop] Removing stopped containers that use volume ${volume}"
-        docker rm -f ${container_ids} >/dev/null 2>&1 || true
-      fi
-
-      docker volume rm "${volume}" >/dev/null 2>&1 || true
-    done
-  fi
-
-  echo "[stop] Removing remaining orphan volumes while keeping pip-cache..."
-  local keep_container="keep-pip-cache-${project}"
-
-  if ! docker volume inspect "${keep_project}" >/dev/null 2>&1; then
-    docker volume create "${keep_project}" >/dev/null
-  fi
-
-  docker rm -f "${keep_container}" >/dev/null 2>&1 || true
-  docker create --name "${keep_container}" -v "${keep_project}:/pip-cache" alpine:3.19 true >/dev/null
-  docker volume prune -f >/dev/null
-  docker rm -f "${keep_container}" >/dev/null 2>&1 || true
 }
 
 echo "[stop] Stopping AskMyDasma backend..."
