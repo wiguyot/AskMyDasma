@@ -1,0 +1,478 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "id": null,
+  "panels": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "displayName": "${__field.name} (Group=\"${__field.labels.Group}\", event=\"${__field.labels.source_event_id}\")",
+          "custom": {
+            "axisPlacement": "auto",
+            "axisWidth": 100,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"explainability-v2\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => not exists r.explained_model or r.explained_model == \"hstree\")\n  |> filter(fn: (r) => r._field == \"shap_base_value\" or r._field == \"local_hstree_score\")\n  |> filter(fn: (r) => if \"${group}\" == \"\" or \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> group(columns: [\"_field\", \"Group\"])\n  |> aggregateWindow(every: 1s, fn: last, createEmpty: false, timeSrc: \"_time\")\n  |> drop(columns: [\"source_event_id\", \"host\", \"_measurement\"])\n  |> yield(name: \"last\")",
+          "refId": "A"
+        }
+      ],
+      "title": "HSTree score and SHAP base value",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "axisWidth": 100,
+            "drawStyle": "points",
+            "fillOpacity": 20,
+            "lineWidth": 1,
+            "showPoints": "always",
+            "pointSize": 4
+          },
+          "displayName": "${__field.labels._field}"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "fieldSel = if \"${feature}\" == \"\" then \"ALL\" else \"${feature}\"\nfieldName = fieldSel\nmodelName = \"hstree\"\nscalarFields = [\"explained_value\", \"explanation_output\", \"explanation_error_code\", \"explained_model\", \"explainability_mode\", \"explanation_method\", \"explanation_profile\", \"explanation_status\", \"explainability_seed\", \"feature_fingerprint\", \"hstree_anomaly\", \"hstree_model_fingerprint\", \"hstree_model_version\", \"hstree_score\", \"hstree_status\", \"hstree_threshold\", \"local_hstree_score\", \"iforest_anomaly\", \"iforest_score\", \"iforest_status\", \"iforest_threshold\", \"local_score\", \"reference_anomaly\", \"reference_model\", \"reference_score\", \"reference_status\", \"reference_threshold\", \"model_version\", \"model_fingerprint\", \"shap_background_size\", \"shap_base_value\", \"shap_computation_time_ms\", \"shap_nsamples\"]\n\nmodel_stream =\n  from(bucket: \"explainability-v2\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => not exists r.explained_model or r.explained_model == \"hstree\")\n    |> filter(fn: (r) => r._field == \"explained_model\" and r._value == modelName)\n    |> keep(columns: [\"_time\", \"Group\", \"source_event_id\"])\n    |> group(columns: [\"Group\"])\n\nshap_stream =\n  from(bucket: \"explainability-v2\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => not exists r.explained_model or r.explained_model == \"hstree\")\n    |> filter(fn: (r) => if \"${group}\" == \"\" or \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n    |> filter(fn: (r) => if fieldSel == \"ALL\" then not contains(value: r._field, set: scalarFields) else r._field == fieldName)\n    |> group(columns: [\"Group\"])\n\njoin(tables: {shap: shap_stream, model: model_stream}, on: [\"_time\", \"Group\", \"source_event_id\"])\n  |> group(columns: [\"_field\", \"Group\"])\n  |> aggregateWindow(every: 1s, fn: last, createEmpty: false, timeSrc: \"_time\")\n  |> drop(columns: [\"source_event_id\"])\n  |> yield(name: \"last\")",
+          "refId": "A"
+        }
+      ],
+      "title": "HSTree SHAP contribution of a feature",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "axisWidth": 100,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "fieldSel = if \"${feature}\" == \"\" then \"ALL\" else \"${feature}\"\ngroupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nban = [\"timestamp\",\"LabviewTime\",\"LabViewTime\",\"StepNumber\",\"Cycle\"]\n\nfrom(bucket: \"source-data\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"source-data\")\n  |> filter(fn: (r) => not contains(value: r._field, set: ban))\n  |> filter(fn: (r) => fieldSel == \"ALL\" or r._field == fieldSel)\n  |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n  |> drop(columns: [\"host\", \"_measurement\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "HSTree source elements",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 4,
+      "options": {
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "normal",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "showLabel": "auto",
+        "xField": "status",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "all",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"explainability-v2\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => not exists r.explained_model or r.explained_model == \"hstree\")\n  |> filter(fn: (r) => r._field == \"explanation_status\")\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> map(fn: (r) => ({r with status: r._value}))\n  |> group(columns: [\"status\", \"Group\"])\n  |> count()\n  |> group(columns: [\"status\"])\n  |> pivot(rowKey: [\"status\"], columnKey: [\"Group\"], valueColumn: \"_value\")\n  // Collapse the status group key so Grafana receives status as the x field.\n  |> group()\n  // Keep one row per status and one numeric column per selected group.\n  // Grafana renders each group column as a separate coloured series.\n  |> sort(columns: [\"status\"], desc: true)\n  |> yield(name: \"results_by_status_and_group\")",
+          "refId": "A"
+        }
+      ],
+      "title": "How many Explainability V2 HSTree results were produced per selected group?",
+      "description": "Each bar category is an explanation status, such as warmup or computed. Each colour represents one selected group, so the bar composition shows how many results each group produced in the selected time range. Values are shown on hover.",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "overrides": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "compared_scores"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Compared scores"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "identical_scores"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Identical scores"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "different_scores"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Different scores"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "identical_rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "displayName",
+                "value": "Identical rate"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "import \"math\"\n\nupstream_stream =\n  from(bucket: \"explainability-v2\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => not exists r.explained_model or r.explained_model == \"hstree\")\n    |> filter(fn: (r) => r._field == \"hstree_score\")\n    |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n\nlocal_stream =\n  from(bucket: \"explainability-v2\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => not exists r.explained_model or r.explained_model == \"hstree\")\n    |> filter(fn: (r) => r._field == \"local_hstree_score\")\n    |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n\nunion(tables: [upstream_stream, local_stream])\n  |> group(columns: [\"_time\", \"Group\", \"source_event_id\"])\n  |> pivot(rowKey: [\"_time\", \"Group\", \"source_event_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> filter(fn: (r) => exists r.hstree_score and exists r.local_hstree_score)\n  |> map(fn: (r) => ({\n      r with\n      identical_scores: if math.abs(x: r.hstree_score - r.local_hstree_score) <= 0.000001 then 1 else 0,\n      different_scores: if math.abs(x: r.hstree_score - r.local_hstree_score) > 0.000001 then 1 else 0,\n      compared_scores: 1,\n    }))\n  |> group(columns: [\"Group\"])\n  |> reduce(\n      fn: (r, accumulator = {compared_scores: 0, identical_scores: 0, different_scores: 0}) => ({\n        compared_scores: accumulator.compared_scores + r.compared_scores,\n        identical_scores: accumulator.identical_scores + r.identical_scores,\n        different_scores: accumulator.different_scores + r.different_scores,\n      }),\n      identity: {compared_scores: 0, identical_scores: 0, different_scores: 0},\n    )\n  |> map(fn: (r) => ({\n      r with\n      identical_rate: float(v: r.identical_scores) / float(v: r.compared_scores),\n    }))\n  |> group()\n  |> keep(columns: [\"Group\", \"compared_scores\", \"identical_scores\", \"different_scores\", \"identical_rate\"])\n  |> sort(columns: [\"Group\"])\n  |> yield(name: \"hstree_score_fidelity_by_group\")",
+          "refId": "A"
+        }
+      ],
+      "title": "HSTree score fidelity by group",
+      "description": "For each selected group, this table counts the scores that are identical or different between upstream HSTree and local Explainability V2. Scores are compared event by event; identical means an absolute difference of at most 0.000001. Warmup events are excluded because one or both scores may be unavailable.",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "displayName": "${__field.name} ms (Group=\"${__field.labels.Group}\", event=\"${__field.labels.source_event_id}\")",
+          "unit": "suffix: ms",
+          "custom": {
+            "axisPlacement": "auto",
+            "axisWidth": 100,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Moyenne mobile (100 enregistrements) — ${__field.labels.Group}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"explainability-v2\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => not exists r.explained_model or r.explained_model == \"hstree\")\n  |> filter(fn: (r) => r._field == \"shap_computation_time_ms\")\n  |> filter(fn: (r) => if \"${group}\" == \"\" or \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> group(columns: [\"_field\", \"Group\"])\n  |> aggregateWindow(every: 1s, fn: last, createEmpty: false, timeSrc: \"_time\")\n  |> drop(columns: [\"source_event_id\", \"host\", \"_measurement\"])\n  |> yield(name: \"shap_time\")",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"explainability-v2\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => not exists r.explained_model or r.explained_model == \"hstree\")\n  |> filter(fn: (r) => r._field == \"shap_computation_time_ms\")\n  |> filter(fn: (r) => if \"${group}\" == \"\" or \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> group(columns: [\"Group\"])\n  |> sort(columns: [\"_time\", \"source_event_id\"])\n  |> movingAverage(n: 100)\n  |> map(fn: (r) => ({r with _field: \"shap_computation_time_ms_ma100\"}))\n  |> group(columns: [\"_field\", \"Group\"])\n  |> drop(columns: [\"_start\", \"_stop\", \"source_event_id\", \"host\", \"_measurement\"])\n  |> yield(name: \"shap_time_ma100\")",
+          "refId": "B"
+        }
+      ],
+      "title": "HSTree SHAP computation time V2 (ms)",
+      "description": "Raw SHAP computation durations and a trailing moving average over the current and previous 99 computed records, calculated separately for each group.",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": [
+    "explainability-v2",
+    "influxdb",
+    "observability"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"source-data\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"source-data\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Group",
+        "multi": false,
+        "name": "group",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"source-data\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"source-data\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nfields =\n  from(bucket: \"source-data\")\n    |> range(start: 2020-01-01T00:00:00Z)\n    |> filter(fn: (r) => r._measurement == \"source-data\")\n    |> keep(columns: [\"_field\"])\n    |> group()\n    |> distinct(column: \"_field\")\n    |> filter(fn: (r) =>\n      r._value != \"timestamp\" and\n      r._value != \"LabViewTime\" and\n      r._value != \"LabviewTime\" and\n      r._value != \"StepNumber\" and\n      r._value != \"Cycle\"\n    )\n    |> keep(columns: [\"_value\"])\n\nunion(tables: [all, fields])\n  |> group()\n  |> sort(columns: [\"_value\"])",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Feature",
+        "multi": false,
+        "name": "feature",
+        "options": [],
+        "query": "import \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nfields =\n  from(bucket: \"source-data\")\n    |> range(start: 2020-01-01T00:00:00Z)\n    |> filter(fn: (r) => r._measurement == \"source-data\")\n    |> keep(columns: [\"_field\"])\n    |> group()\n    |> distinct(column: \"_field\")\n    |> filter(fn: (r) =>\n      r._value != \"timestamp\" and\n      r._value != \"LabViewTime\" and\n      r._value != \"LabviewTime\" and\n      r._value != \"StepNumber\" and\n      r._value != \"Cycle\"\n    )\n    |> keep(columns: [\"_value\"])\n\nunion(tables: [all, fields])\n  |> group()\n  |> sort(columns: [\"_value\"])",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "title": "Explainability V2 — HSTree",
+  "uid": "explainability-v2-influxdb",
+  "version": 5
+}

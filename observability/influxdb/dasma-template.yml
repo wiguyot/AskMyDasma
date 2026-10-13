@@ -1,0 +1,861 @@
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: agreeing-shaw-e73005
+spec:
+    name: iforest-analysis
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: alerting-ramanujan-e73001
+spec:
+    name: hstree-analysis
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: brave-mendeleev-e7300d
+spec:
+    name: source-data-viz
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: burfect-cerf-e73009
+spec:
+    name: kitnet-analysis
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: crazy-torvalds-e73007
+spec:
+    name: iforest-analysis-viz
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: epic-jemison-e7300f
+spec:
+    name: explainability
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: noshing-jang-e73011
+spec:
+    name: explainability-viz
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: realistic-neumann-e73003
+spec:
+    name: hstree-analysis-viz
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: romantic-chatterjee-e7300b
+spec:
+    name: source-data
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: tender-sutherland-e73013
+spec:
+    name: topic-metrics
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Variable
+metadata:
+    name: compassionate-lamport-e73017
+spec:
+    language: flux
+    name: group
+    query: |-
+        import "influxdata/influxdb/schema"
+        import "array"
+
+        all = array.from(rows: [{_value: "ALL"}])
+
+        groups =
+          schema.tagValues(
+            bucket: "source-data",
+            tag: "Group",
+            predicate: (r) => r._measurement == "source-data",
+            start: 2020-01-01T00:00:00Z,
+          )
+          |> keep(columns: ["_value"])
+
+        union(tables: [all, groups])
+          |> group()
+    type: query
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Variable
+metadata:
+    name: flamboyant-chatelet-e73015
+spec:
+    language: flux
+    name: source-data
+    query: |-
+        import "influxdata/influxdb/schema"
+        import "array"
+
+        all = array.from(rows: [{_value: "ALL"}])
+
+        fields =
+          schema.fieldKeys(
+            bucket: "source-data",
+            predicate: (r) => r._measurement == "source-data",
+            start: 2020-01-01T00:00:00Z
+          )
+          |> filter(fn: (r) =>
+            r._value != "timestamp" and
+            r._value != "LabViewTime" and
+            r._value != "LabviewTime" and
+            r._value != "StepNumber" and
+            r._value != "Cycle"
+          )
+          |> keep(columns: ["_value"])
+
+        union(tables: [all, fields])
+          |> group()
+    selected:
+        - ALL
+    type: query
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Dashboard
+metadata:
+    name: affectionate-lamarr-273001
+spec:
+    charts:
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: adrAXpXuFnu4wWWHygBP_
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: UW-llIYgSbuAgsLJ3Zqbo
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: vGM2pmz5ea_4ff2qjik0Q
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          heightRatio: 0.2
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: Source Data
+          opacity: 1
+          orientationThreshold: -1
+          position: overlaid
+          queries:
+            - query: |-
+                fieldSel = if v.feature == "" then "ALL" else v.feature
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                ban = ["timestamp","LabviewTime","LabViewTime","StepNumber","Cycle"]
+
+                from(bucket: "source-data")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "source-data")
+                  |> filter(fn: (r) => not contains(value: r._field, set: ban))
+                  |> filter(fn: (r) => fieldSel == "ALL" or r._field == fieldSel)
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+                  |> drop(columns: ["host", "_measurement"])
+          show: true
+          staticLegend:
+            colorizeRows: true
+            heightRatio: 0.2
+            opacity: 1
+            orientationThreshold: -1
+            show: true
+            valueAxis: "y"
+            widthRatio: 1
+          valueAxis: "y"
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: A9FohV741Z79d48evwf_P
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: cglETw7EBF3zrxBqnzFxc
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: 0M3r5LIPpucz2HejKMVQe
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: HSTree Analysis
+          opacity: 1
+          orientationThreshold: 1e+08
+          position: overlaid
+          queries:
+            - query: |-
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                from(bucket: "hstree-analysis")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "hstree-analysis")
+                  |> filter(fn: (r) => r._field == "hstree_score")
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+          staticLegend:
+            colorizeRows: true
+            opacity: 1
+            orientationThreshold: 1e+08
+            widthRatio: 1
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+          yPos: 5
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: A9FohV741Z79d48evwf_P
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: cglETw7EBF3zrxBqnzFxc
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: 0M3r5LIPpucz2HejKMVQe
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: iForest Analysis
+          opacity: 1
+          orientationThreshold: 1e+08
+          position: overlaid
+          queries:
+            - query: |-
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                from(bucket: "iforest-analysis")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "iforest-analysis")
+                  |> filter(fn: (r) => r._field == "iforest_score")
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+          staticLegend:
+            colorizeRows: true
+            opacity: 1
+            orientationThreshold: 1e+08
+            widthRatio: 1
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+          yPos: 10
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: A9FohV741Z79d48evwf_P
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: cglETw7EBF3zrxBqnzFxc
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: 0M3r5LIPpucz2HejKMVQe
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: KitNET Analysis
+          opacity: 1
+          orientationThreshold: 1e+08
+          position: overlaid
+          queries:
+            - query: |-
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                from(bucket: "kitnet-analysis")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "kitnet-analysis" and r._field == "kitnet_score")
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+                  |> map(fn: (r) => ({ r with _value: if r._value > 5.0 then 5.0 else r._value }))
+                  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+                  |> yield(name: "mean")
+          staticLegend:
+            colorizeRows: true
+            opacity: 1
+            orientationThreshold: 1e+08
+            widthRatio: 1
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+          yPos: 15
+    name: Source Data and Analyses
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Dashboard
+metadata:
+    name: amazing-pascal-673003
+spec:
+    charts:
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: adrAXpXuFnu4wWWHygBP_
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: UW-llIYgSbuAgsLJ3Zqbo
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: vGM2pmz5ea_4ff2qjik0Q
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          heightRatio: 0.2
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: Source Data
+          opacity: 1
+          orientationThreshold: -1
+          position: overlaid
+          queries:
+            - query: |-
+                fieldSel = if v.feature == "" then "ALL" else v.feature
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                ban = ["timestamp","LabviewTime","LabViewTime","StepNumber","Cycle"]
+
+                from(bucket: "source-data")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "source-data")
+                  |> filter(fn: (r) => not contains(value: r._field, set: ban))
+                  |> filter(fn: (r) => fieldSel == "ALL" or r._field == fieldSel)
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+                  |> drop(columns: ["host", "_measurement"])
+          show: true
+          staticLegend:
+            colorizeRows: true
+            heightRatio: 0.2
+            opacity: 1
+            orientationThreshold: -1
+            show: true
+            valueAxis: "y"
+            widthRatio: 1
+          valueAxis: "y"
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: A9FohV741Z79d48evwf_P
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: cglETw7EBF3zrxBqnzFxc
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: 0M3r5LIPpucz2HejKMVQe
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: KitNET Analysis
+          opacity: 1
+          orientationThreshold: 1e+08
+          position: overlaid
+          queries:
+            - query: |-
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                from(bucket: "kitnet-analysis")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "kitnet-analysis" and r._field == "kitnet_score")
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+                  |> map(fn: (r) => ({ r with _value: if r._value > 5.0 then 5.0 else r._value }))
+                  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+                  |> yield(name: "mean")
+          staticLegend:
+            colorizeRows: true
+            opacity: 1
+            orientationThreshold: 1e+08
+            widthRatio: 1
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+          yPos: 5
+    name: Source Data and KitNET
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Dashboard
+metadata:
+    name: busy-bouman-a73001
+spec:
+    charts:
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: 8aRiMQqDB6QxwJSCMLYyC
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: 1Tli0geyHOl_25pDqbYFU
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: Ol4VjOXyz3Cai8Tsk_Ch6
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 4
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: Shap_base_value et local_hstree_score
+          opacity: 1
+          orientationThreshold: 1e+08
+          position: overlaid
+          queries:
+            - query: |-
+                from(bucket: "explainability")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "explainability")
+                  |> filter(fn: (r) => r._field == "shap_base_value" or r._field == "local_hstree_score")
+                  |> filter(fn: (r) => if v.group == "ALL" then true else r.Group == v.group)
+                  |> yield(name: "last")
+          staticLegend:
+            colorizeRows: true
+            opacity: 1
+            orientationThreshold: 1e+08
+            widthRatio: 1
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+        - axes:
+            - name: x
+            - name: "y"
+          colors:
+            - hex: '#31C0F6'
+            - hex: '#BC00B8'
+            - hex: '#FF7E27'
+          height: 4
+          kind: Scatter
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: SHAP contribution for one feature
+          queries:
+            - query: |-
+                fieldSel = if v.feature == "" then "ALL" else v.feature
+                fieldName = "shap_values_" + fieldSel
+
+                from(bucket: "explainability")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "explainability")
+                  |> filter(fn: (r) => if v.group == "ALL" then true else r.Group == v.group)
+                  |> filter(fn: (r) =>
+                    if fieldSel == "ALL"
+                    then r._field =~ /^shap_values_/
+                    else r._field == fieldName
+                  )
+                  |> yield(name: "last")
+          staticLegend: {}
+          width: 12
+          xCol: _time
+          yCol: _value
+          yPos: 4
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: 8aRiMQqDB6QxwJSCMLYyC
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: 1Tli0geyHOl_25pDqbYFU
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: Ol4VjOXyz3Cai8Tsk_Ch6
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 4
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: Source elements
+          opacity: 1
+          orientationThreshold: 1e+08
+          position: overlaid
+          queries:
+            - query: |-
+                fieldSel = if v.feature == "" then "ALL" else v.feature
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                ban = ["timestamp","LabviewTime","LabViewTime","StepNumber","Cycle"]
+
+                from(bucket: "source-data")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "source-data")
+                  |> filter(fn: (r) => not contains(value: r._field, set: ban))
+                  |> filter(fn: (r) => fieldSel == "ALL" or r._field == fieldSel)
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+                  |> drop(columns: ["host", "_measurement"])
+          staticLegend:
+            colorizeRows: true
+            opacity: 1
+            orientationThreshold: 1e+08
+            widthRatio: 1
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+          yPos: 8
+    name: Explainability
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Dashboard
+metadata:
+    name: elegant-blackburn-673001
+spec:
+    charts:
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: adrAXpXuFnu4wWWHygBP_
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: UW-llIYgSbuAgsLJ3Zqbo
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: vGM2pmz5ea_4ff2qjik0Q
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          heightRatio: 0.2
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: Source Data
+          opacity: 1
+          orientationThreshold: -1
+          position: overlaid
+          queries:
+            - query: |-
+                fieldSel = if v.feature == "" then "ALL" else v.feature
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                ban = ["timestamp","LabviewTime","LabViewTime","StepNumber","Cycle"]
+
+                from(bucket: "source-data")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "source-data")
+                  |> filter(fn: (r) => not contains(value: r._field, set: ban))
+                  |> filter(fn: (r) => fieldSel == "ALL" or r._field == fieldSel)
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+                  |> drop(columns: ["host", "_measurement"])
+          show: true
+          staticLegend:
+            colorizeRows: true
+            heightRatio: 0.2
+            opacity: 1
+            orientationThreshold: -1
+            show: true
+            valueAxis: "y"
+            widthRatio: 1
+          valueAxis: "y"
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: A9FohV741Z79d48evwf_P
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: cglETw7EBF3zrxBqnzFxc
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: 0M3r5LIPpucz2HejKMVQe
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: HSTree Analysis
+          opacity: 1
+          orientationThreshold: 1e+08
+          position: overlaid
+          queries:
+            - query: |-
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                from(bucket: "hstree-analysis")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "hstree-analysis")
+                  |> filter(fn: (r) => r._field == "hstree_score")
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+          staticLegend:
+            colorizeRows: true
+            opacity: 1
+            orientationThreshold: 1e+08
+            widthRatio: 1
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+          yPos: 5
+    name: Source Data and HSTree
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Dashboard
+metadata:
+    name: vibrant-feistel-a73003
+spec:
+    charts:
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: adrAXpXuFnu4wWWHygBP_
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: UW-llIYgSbuAgsLJ3Zqbo
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: vGM2pmz5ea_4ff2qjik0Q
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          heightRatio: 0.2
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: Source Data
+          opacity: 1
+          orientationThreshold: -1
+          position: overlaid
+          queries:
+            - query: |-
+                fieldSel = if v.feature == "" then "ALL" else v.feature
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                ban = ["timestamp","LabviewTime","LabViewTime","StepNumber","Cycle"]
+
+                from(bucket: "source-data")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "source-data")
+                  |> filter(fn: (r) => not contains(value: r._field, set: ban))
+                  |> filter(fn: (r) => fieldSel == "ALL" or r._field == fieldSel)
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+                  |> drop(columns: ["host", "_measurement"])
+          show: true
+          staticLegend:
+            colorizeRows: true
+            heightRatio: 0.2
+            opacity: 1
+            orientationThreshold: -1
+            show: true
+            valueAxis: "y"
+            widthRatio: 1
+          valueAxis: "y"
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+        - axes:
+            - base: "10"
+              name: x
+              scale: linear
+            - base: "10"
+              name: "y"
+              scale: linear
+          colorizeRows: true
+          colors:
+            - hex: '#31C0F6'
+              id: A9FohV741Z79d48evwf_P
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#A500A5'
+              id: cglETw7EBF3zrxBqnzFxc
+              name: Nineteen Eighty Four
+              type: scale
+            - hex: '#FF7E27'
+              id: 0M3r5LIPpucz2HejKMVQe
+              name: Nineteen Eighty Four
+              type: scale
+          geom: line
+          height: 5
+          hoverDimension: auto
+          kind: Xy
+          legendColorizeRows: true
+          legendOpacity: 1
+          legendOrientationThreshold: 1e+08
+          name: iForest Analysis
+          opacity: 1
+          orientationThreshold: 1e+08
+          position: overlaid
+          queries:
+            - query: |-
+                groupSel = if v.group == "" then "ALL" else v.group
+
+                from(bucket: "iforest-analysis")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "iforest-analysis")
+                  |> filter(fn: (r) => r._field == "iforest_score")
+                  |> filter(fn: (r) => groupSel == "ALL" or r.Group == groupSel)
+          staticLegend:
+            colorizeRows: true
+            opacity: 1
+            orientationThreshold: 1e+08
+            widthRatio: 1
+          width: 12
+          widthRatio: 1
+          xCol: _time
+          yCol: _value
+          yPos: 5
+    name: Source Data and IForest

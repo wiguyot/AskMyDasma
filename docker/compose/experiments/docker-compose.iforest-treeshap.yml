@@ -1,0 +1,42 @@
+# Isolated runtime witness for iForest TreeSHAP phase C.
+# Use with `docker compose -p <unique-project> -f docker-compose.yml -f this-file`
+# and only the services needed by the witness. The runtime wrapper removes
+# container_name keys from the resolved Compose document so the regular
+# stopped development stack can remain intact; project-scoped networks and
+# volumes keep broker state separate.
+services:
+  kafka1:
+    container_name: null
+  kafka2:
+    container_name: null
+  kafka3:
+    container_name: null
+  schema-registry:
+    container_name: null
+  init-topic:
+    container_name: null
+  producer:
+    container_name: null
+    environment:
+      DATA_SOURCE_FILE: ${DATA_SOURCE_FILE:-data/source-5000.csv}
+      TIME_DELAY: "0.0001"
+  iforest-analysis:
+    container_name: null
+  explainability:
+    container_name: null
+    environment:
+      EXPLAINABILITY_MODEL: ${EXPLAINABILITY_MODEL:-iforest}
+      EXPLAINABILITY_MODE: ${EXPLAINABILITY_MODE:-reference}
+      EXPLAINABILITY_METHOD: ${EXPLAINABILITY_METHOD:-tree}
+      EXPLAINABILITY_SOURCE_TOPIC: ${EXPLAINABILITY_SOURCE_TOPIC:-iforest-analysis}
+      SHAP_BACKGROUND_SIZE: ${SHAP_BACKGROUND_SIZE:-100}
+      DASMA_ENABLED: ${DASMA_EXPLAINABILITY_ENABLED:-1}
+  explainability-v2:
+    container_name: null
+    environment:
+      EXPLAINABILITY_V2_MODEL: ${EXPLAINABILITY_V2_MODEL:-iforest}
+      EXPLAINABILITY_V2_MODE: ${EXPLAINABILITY_V2_MODE:-reference}
+      EXPLAINABILITY_V2_METHOD: ${EXPLAINABILITY_V2_METHOD:-tree}
+      EXPLAINABILITY_V2_SOURCE_TOPIC: ${EXPLAINABILITY_V2_SOURCE_TOPIC:-iforest-analysis}
+      SHAP_BACKGROUND_SIZE: ${SHAP_BACKGROUND_SIZE:-100}
+      DASMA_ENABLED: ${DASMA_EXPLAINABILITY_V2_ENABLED:-1}

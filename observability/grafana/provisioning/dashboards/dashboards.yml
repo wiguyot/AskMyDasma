@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: "local-dashboards"
+    type: file
+    orgId: 1
+    folder: ""                 # Root folder in Grafana (Home)
+    disableDeletion: true
+    editable: false
+    updateIntervalSeconds: 10  # Grafana rescans files every 10s
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dasma-kafka/experiments/explainability/v1_v2/q3_partition_trace.schema.json",
+  "title": "Q3 partition and worker-order diagnostic trace record",
+  "description": "Side-channel record. It must never be added to a business Kafka message.",
+  "type": "object",
+  "properties": {
+    "schema_version": {"const": "q3-partition-trace-v1"},
+    "run_id": {"type": "string", "minLength": 1},
+    "service": {
+      "enum": ["hstree-upstream", "explainability-v1", "explainability-v2"]
+    },
+    "record_type": {
+      "enum": ["message_lifecycle", "model_initialization", "offset_commit"]
+    },
+    "process_instance": {"type": "string", "minLength": 1},
+    "record_seq": {"type": "integer", "minimum": 1},
+    "record_monotonic_ns": {"type": "integer", "minimum": 0},
+    "source_topic": {"type": "string", "minLength": 1},
+    "source_partition": {"type": "integer", "minimum": 0},
+    "source_offset": {"type": "integer", "minimum": 0},
+    "group": {"type": "string", "minLength": 1},
+    "source_event_id": {"type": "string", "minLength": 1},
+    "consumer": {
+      "type": "object",
+      "properties": {
+        "process_instance": {"type": "string", "minLength": 1},
+        "receive_seq": {"type": "integer", "minimum": 1},
+        "dispatch_seq": {"type": ["integer", "null"], "minimum": 1}
+      },
+      "required": ["process_instance", "receive_seq", "dispatch_seq"],
+      "additionalProperties": false
+    },
+    "worker": {
+      "type": "object",
+      "properties": {
+        "process_instance": {"type": ["string", "null"]},
+        "worker_id": {"type": ["string", "null"]},
+        "group_seq": {"type": ["integer", "null"], "minimum": 1},
+        "start_seq": {"type": ["integer", "null"], "minimum": 1},
+        "complete_seq": {"type": ["integer", "null"], "minimum": 1}
+      },
+      "required": ["process_instance", "worker_id", "group_seq", "start_seq", "complete_seq"],
+      "additionalProperties": false
+    },
+    "published_outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "topic": {"type": "string", "minLength": 1},
+          "process_instance": {"type": "string", "minLength": 1},
+          "publish_seq": {"type": "integer", "minimum": 1}
+        },
+        "required": ["topic", "process_instance", "publish_seq"],
+        "additionalProperties": false
+      }
+    },
+    "offsets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "topic": {"type": "string", "minLength": 1},
+          "partition": {"type": "integer", "minimum": 0},
+          "next_offset": {"type": "integer", "minimum": 0}
+        },
+        "required": ["topic", "partition", "next_offset"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "commit_seq": {"type": "integer", "minimum": 1},
+    "commit_outcome": {"enum": ["requested", "acknowledged", "failed"]},
+    "output_status": {"type": ["string", "null"]},
+    "initialization_order_seq": {"type": "integer", "minimum": 1},
+    "warmup_event_ids": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1
+    },
+    "warmup_values_sha256": {"$ref": "#/$defs/sha256"},
+    "feature_names": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "feature_mins": {"type": "object", "additionalProperties": {"type": "number"}},
+    "feature_maxes": {"type": "object", "additionalProperties": {"type": "number"}},
+    "hstree_parameters": {
+      "type": "object",
+      "properties": {
+        "initial_window_size": {"type": "integer", "minimum": 1},
+        "window_size": {"type": "integer", "minimum": 1},
+        "num_trees": {"type": "integer", "minimum": 1},
+        "max_depth": {"type": "integer", "minimum": 1},
+        "configured_seed": {"type": "integer", "minimum": 0}
+      },
+      "required": [
+        "initial_window_size", "window_size", "num_trees", "max_depth", "configured_seed"
+      ],
+      "additionalProperties": false
+    },
+    "numpy_state": {
+      "type": "object",
+      "properties": {
+        "algorithm": {"const": "MT19937"},
+        "keys": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+          "minItems": 624,
+          "maxItems": 624
+        },
+        "position": {"type": "integer", "minimum": 0, "maximum": 624},
+        "has_gaussian": {"type": "integer", "enum": [0, 1]},
+        "cached_gaussian": {"type": "number"}
+      },
+      "required": ["algorithm", "keys", "position", "has_gaussian", "cached_gaussian"],
+      "additionalProperties": false
+    },
+    "python_state_sha256": {"$ref": "#/$defs/sha256"},
+    "versions": {
+      "type": "object",
+      "properties": {
+        "python": {"type": "string", "minLength": 1},
+        "numpy": {"type": "string", "minLength": 1},
+        "pysad": {"type": "string", "minLength": 1}
+      },
+      "required": ["python", "numpy", "pysad"],
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "schema_version", "run_id", "service", "record_type", "process_instance",
+    "record_seq", "record_monotonic_ns"
+  ],
+  "oneOf": [
+    {
+      "properties": {"record_type": {"const": "message_lifecycle"}},
+      "required": [
+        "source_topic", "source_partition", "source_offset", "group",
+        "source_event_id", "consumer", "worker", "published_outputs", "output_status"
+      ]
+    },
+    {
+      "properties": {"record_type": {"const": "model_initialization"}},
+      "required": [
+        "source_topic", "source_partition", "source_offset", "group",
+        "source_event_id", "initialization_order_seq", "warmup_event_ids",
+        "warmup_values_sha256", "feature_names", "feature_mins", "feature_maxes",
+        "hstree_parameters", "numpy_state", "python_state_sha256", "versions"
+      ]
+    },
+    {
+      "properties": {"record_type": {"const": "offset_commit"}},
+      "required": ["commit_seq", "offsets", "commit_outcome"]
+    }
+  ],
+  "additionalProperties": false
+}

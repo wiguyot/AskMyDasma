@@ -1,0 +1,267 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Source components by group",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 0, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "ban = [\"timestamp\", \"LabviewTime\", \"LabViewTime\", \"StepNumber\", \"Cycle\"]\ncomponentSel = if \"${component}\" == \"\" then \"ALL\" else \"${component}\"\n\nfrom(bucket: \"source-data\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"source-data\")\n  |> filter(fn: (r) => not contains(value: r._field, set: ban))\n  |> filter(fn: (r) => componentSel == \"ALL\" or r._field == componentSel)\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> drop(columns: [\"host\", \"_measurement\"])"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Global anomaly score per event — v1 vs v2",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 0, "showPoints": "always", "pointSize": 3 },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "warming_up_.*" },
+            "properties": [
+              { "id": "displayName", "value": "Warmup marker" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "gray" } },
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "custom.drawStyle", "value": "points" },
+              { "id": "custom.showPoints", "value": "always" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "score v2" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 6] } }
+            ]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"score_a\")\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> map(fn: (r) => ({ r with _field: \"score v1\" }))\n  |> keep(columns: [\"_time\", \"_value\", \"Group\", \"_field\"])\n  |> group(columns: [\"Group\", \"_field\"])"
+        },
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "B",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"score_b\")\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> map(fn: (r) => ({ r with _field: \"score v2\" }))\n  |> keep(columns: [\"_time\", \"_value\", \"Group\", \"_field\"])\n  |> group(columns: [\"Group\", \"_field\"])"
+        },
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "C",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"warming_up_a\" or r._field == \"warming_up_b\")\n  |> filter(fn: (r) => r._value == 1)\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> keep(columns: [\"_time\", \"_value\", \"Group\", \"_field\"])\n  |> group(columns: [\"Group\", \"_field\"])"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Global score difference per event (score_diff / abs_diff)",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "points", "lineWidth": 0, "fillOpacity": 0, "pointSize": 5 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"score_diff\" or r._field == \"abs_diff\")\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> keep(columns: [\"_time\", \"_value\", \"Group\", \"_field\"])\n  |> group(columns: [\"Group\", \"_field\"])"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Repeatability verdict (identical)",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "points", "lineWidth": 0, "fillOpacity": 0, "pointSize": 6 },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": { "text": "Identical", "color": "green", "index": 0 },
+                "0": { "text": "Divergent", "color": "red", "index": 1 }
+              }
+            }
+          ],
+          "max": 1.2,
+          "min": -0.2
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"identical\")\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> filter(fn: (r) => exists r._value)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Max abs diff",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 31 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"abs_diff\")\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> group()\n  |> max()"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Divergences (identical == 0)",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 31 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"identical\" and r._value == 0)\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> group()\n  |> count()"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Incomplete events (complete_int == 0)",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 31 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"complete_int\" and r._value == 0)\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> group()\n  |> count()"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "% identical events",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 31 },
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "min": 0 }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"identical\" and exists r._value)\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> group()\n  |> mean()\n  |> map(fn: (r) => ({ r with _value: r._value * 100.0 }))"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Latest comparison events (emit_reason)",
+      "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 },
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+          "refId": "A",
+          "query": "from(bucket: \"repeatability-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"repeatability-diff\")\n  |> filter(fn: (r) => r._field == \"emit_reason\" or r._field == \"identical\" or r._field == \"complete_int\")\n  |> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> last()\n  |> pivot(rowKey: [\"_time\", \"Group\", \"source_event_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"Group\", \"source_event_id\", \"emit_reason\", \"identical\", \"complete_int\"])\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 20)"
+        }
+      ]
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": ["repeatability", "influxdb", "observability"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "ALL", "value": "ALL" },
+        "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+        "definition": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"repeatability-v1\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"repeatability-v1\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Group",
+        "multi": false,
+        "name": "group",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"repeatability-v1\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"repeatability-v1\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "ALL", "value": "ALL" },
+        "datasource": { "type": "influxdb", "uid": "influxdb-dasma" },
+        "definition": "import \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\nban = [\"timestamp\", \"LabviewTime\", \"LabViewTime\", \"StepNumber\", \"Cycle\"]\n\ncomponents =\n  from(bucket: \"source-data\")\n    |> range(start: 2020-01-01T00:00:00Z)\n    |> filter(fn: (r) => r._measurement == \"source-data\")\n    |> keep(columns: [\"_field\"])\n    |> group()\n    |> distinct(column: \"_field\")\n    |> filter(fn: (r) => not contains(value: r._value, set: ban))\n\nunion(tables: [all, components])\n  |> group()\n  |> sort(columns: [\"_value\"])",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Source component",
+        "multi": false,
+        "name": "component",
+        "options": [],
+        "query": "import \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\nban = [\"timestamp\", \"LabviewTime\", \"LabViewTime\", \"StepNumber\", \"Cycle\"]\n\ncomponents =\n  from(bucket: \"source-data\")\n    |> range(start: 2020-01-01T00:00:00Z)\n    |> filter(fn: (r) => r._measurement == \"source-data\")\n    |> keep(columns: [\"_field\"])\n    |> group()\n    |> distinct(column: \"_field\")\n    |> filter(fn: (r) => not contains(value: r._value, set: ban))\n\nunion(tables: [all, components])\n  |> group()\n  |> sort(columns: [\"_value\"])",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Repeatability",
+  "uid": "repeatability-influxdb",
+  "version": 1,
+  "weekStart": ""
+}

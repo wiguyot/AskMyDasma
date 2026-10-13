@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a problem that can be reproduced.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Please do not include passwords, access tokens, private data, or
+        confidential logs. Replace them with safe example values.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the problem in a few sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce it?
+      description: List the steps or commands, and include a small synthetic example if useful.
+      placeholder: |
+        1. Start ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include the AskMyDasma version or commit, operating system, Docker, and Docker Compose versions.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove secrets and private data before sharing logs.
+      render: text
+    validations:
+      required: false

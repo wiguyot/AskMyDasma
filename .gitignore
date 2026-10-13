@@ -1,0 +1,12 @@
+.DS_Store
+.tmp
+temp/
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.claude/
+# Generated evidence and other local artifacts belong in subdirectories of
+# data/. Keep the versioned sample files located directly under data/ tracked.
+data/*/

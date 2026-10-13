@@ -1,0 +1,547 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "displayName": "${__field.name} (Group=\"${__field.labels.Group}\")",
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisWidth": 96,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": false,
+          "width": 260
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "import \"strings\"\n\nfieldSel = if \"${feature}\" == \"\" then \"ALL\" else \"${feature}\"\ngroupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nban = [\"timestamp\",\"LabviewTime\",\"LabViewTime\",\"StepNumber\",\"Cycle\"]\n\nfrom(bucket: \"deepant-analysis\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"deepant-analysis\")\n  |> filter(fn: (r) => not contains(value: r._field, set: ban))\n  |> filter(fn: (r) => not strings.hasPrefix(v: r._field, prefix: \"deepant_\"))\n  |> filter(fn: (r) => fieldSel == \"ALL\" or r._field == fieldSel)\n  |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n  |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "refId": "A"
+        }
+      ],
+      "title": "Features",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "displayName": "${__field.name} group=\"${__field.labels.Group}\"",
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisWidth": 96,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_score_log10"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "DeepAnT log10(score + 1) group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_threshold_log10"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "DeepAnT log10(threshold + 1) group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_anomaly_marker_log10"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Anomaly log10(score + 1) marker group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 8
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "import \"math\"\n\ngroupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nbase =\n  from(bucket: \"deepant-analysis\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"deepant-analysis\")\n    |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n\nscore =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_score\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _field: \"deepant_score_log10\", _value: math.log10(x: float(v: r._value) + 1.0) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nthreshold =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_threshold\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _field: \"deepant_threshold_log10\", _value: math.log10(x: float(v: r._value) + 1.0) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n\nanomalies =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_score\" and r.deepant_status == \"anomaly\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _field: \"deepant_anomaly_marker_log10\", _value: math.log10(x: float(v: r._value) + 1.0) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nunion(tables: [score, threshold, anomalies])\n  |> yield(name: \"deepant_analysis\")",
+          "refId": "A"
+        }
+      ],
+      "title": "DeepAnT Analysis",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "displayName": "${__field.name} group=\"${__field.labels.Group}\"",
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Raw score",
+            "axisPlacement": "auto",
+            "axisWidth": 96,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "DeepAnT raw score group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_threshold"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "DeepAnT raw threshold group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_anomaly_marker"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Raw anomaly score marker group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 8
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "groupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nbase =\n  from(bucket: \"deepant-analysis\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"deepant-analysis\")\n    |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n\nscore =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_score\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nthreshold =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_threshold\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n\nanomalies =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_score\" and r.deepant_status == \"anomaly\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _field: \"deepant_anomaly_marker\", _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nunion(tables: [score, threshold, anomalies])\n  |> yield(name: \"deepant_raw_analysis\")",
+          "refId": "A"
+        }
+      ],
+      "title": "DeepAnT Raw Score",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "influxdb",
+    "observability",
+    "deepant"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"source-data\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"source-data\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Group",
+        "multi": false,
+        "name": "group",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"source-data\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"source-data\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"array\"\nimport \"strings\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nfields =\n  from(bucket: \"deepant-analysis\")\n    |> range(start: 2020-01-01T00:00:00Z)\n    |> filter(fn: (r) => r._measurement == \"deepant-analysis\")\n    |> keep(columns: [\"_field\"])\n    |> group()\n    |> distinct(column: \"_field\")\n    |> filter(fn: (r) =>\n      r._value != \"timestamp\" and\n      r._value != \"LabViewTime\" and\n      r._value != \"LabviewTime\" and\n      r._value != \"StepNumber\" and\n      r._value != \"Cycle\" and\n      not strings.hasPrefix(v: r._value, prefix: \"deepant_\")\n    )\n    |> keep(columns: [\"_value\"])\n\nunion(tables: [all, fields])\n  |> group()\n  |> sort(columns: [\"_value\"])",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Feature",
+        "multi": false,
+        "name": "feature",
+        "options": [],
+        "query": "import \"array\"\nimport \"strings\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nfields =\n  from(bucket: \"deepant-analysis\")\n    |> range(start: 2020-01-01T00:00:00Z)\n    |> filter(fn: (r) => r._measurement == \"deepant-analysis\")\n    |> keep(columns: [\"_field\"])\n    |> group()\n    |> distinct(column: \"_field\")\n    |> filter(fn: (r) =>\n      r._value != \"timestamp\" and\n      r._value != \"LabViewTime\" and\n      r._value != \"LabviewTime\" and\n      r._value != \"StepNumber\" and\n      r._value != \"Cycle\" and\n      not strings.hasPrefix(v: r._value, prefix: \"deepant_\")\n    )\n    |> keep(columns: [\"_value\"])\n\nunion(tables: [all, fields])\n  |> group()\n  |> sort(columns: [\"_value\"])",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "DeepAnT",
+  "uid": "source-data-deepant-influxdb",
+  "version": 1,
+  "weekStart": ""
+}

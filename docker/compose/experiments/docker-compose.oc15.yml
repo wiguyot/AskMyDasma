@@ -1,0 +1,122 @@
+# OC-15 dedicated minimal-validation campaign services (non-destructive override).
+#
+# For EACH run (two reference-seed runs + one per secondary seed) the runner
+# starts a fresh isolated campaign: every resource carries the OC15_RUN_ID
+# (fresh UUID per run) and the seed (OC15_SEED): topics, consumer groups and
+# Avro subjects (TopicNameStrategy derives the subject from the dedicated
+# topic names). Created resources are NEVER deleted: they stay for audit.
+#
+# SHAP_NSAMPLES stays at the PRODUCTION value (100): OC-15 validates the
+# explainability content, it does not tune KernelSHAP. The seed is the only
+# varied setting across runs.
+#
+# The standard compose resources are never touched; the runner refuses to
+# start when the standard compute services are running.
+
+services:
+  oc15-producer:
+    image: dasma-kafka-producer:0.1.0
+    container_name: oc15-producer-${OC15_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      TOPIC_NAME: "oc15-s${OC15_SEED}-source-${OC15_RUN_ID}"
+      DATA_SOURCE_FILE: "tests/fixtures/explainability_v2/oc15_validation_source.csv"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TIME_DELAY: "0.0001"
+      PIP_CACHE_DIR: "/pip-cache"
+      DASMA_PRODUCER_TRANSFORMATION: ""
+      DASMA_SELECTED_GROUPS: ""
+      DASMA_EXCLUDED_FIELDS: ""
+      DASMA_PRODUCER_WAIT_FOR_START: "0"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    restart: "no"
+
+  oc15-hstree:
+    image: dasma-kafka-anomaly-light:0.1.0
+    container_name: oc15-hstree-${OC15_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "oc15-s${OC15_SEED}-source-${OC15_RUN_ID}"
+      KAFKA_DEST_TOPIC: "oc15-s${OC15_SEED}-hstree-${OC15_RUN_ID}"
+      KAFKA_DEST_VIZ_TOPIC: "oc15-s${OC15_SEED}-hstree-viz-${OC15_RUN_ID}"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      HSTREE_INITIAL_WINDOW_SIZE: "100"
+      HSTREE_WINDOW_SIZE: "2048"
+      HSTREE_NUM_TREES: "50"
+      HSTREE_MAX_DEPTH: "15"
+      HSTREE_EXCLUDE_FIELDS: "source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber"
+      HSTREE_ANOMALY_K_SIGMA: "3.0"
+      HSTREE_ANOMALY_MIN_SAMPLES: "2"
+      HSTREE_THRESHOLD_MODE: "welford-windowed"
+      ANALYSE_HSTREE_GROUP_ID: "oc15-s${OC15_SEED}-hstree-consumer-${OC15_RUN_ID}"
+      ANALYSE_SEED: "42"
+      DASMA_ENABLED: "1"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/detectors/hstree/hstree_analysis.py"]
+    restart: "no"
+
+  oc15-v2:
+    image: dasma-kafka-explainability:0.1.0
+    container_name: oc15-v2-${OC15_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "oc15-s${OC15_SEED}-hstree-${OC15_RUN_ID}"
+      EXPLAINABILITY_MODEL: "hstree"
+      EXPLAINABILITY_MODE: "reference"
+      EXPLAINABILITY_METHOD: "kernel"
+      KAFKA_DEST_TOPIC: "oc15-s${OC15_SEED}-v2-${OC15_RUN_ID}"
+      KAFKA_DEST_TOPIC_JSON: "oc15-s${OC15_SEED}-v2-viz-${OC15_RUN_ID}"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      EXPLAINABILITY_GROUP_ID: "oc15-s${OC15_SEED}-v2-consumer-${OC15_RUN_ID}"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      HSTREE_INITIAL_WINDOW_SIZE: "100"
+      HSTREE_WINDOW_SIZE: "2048"
+      HSTREE_NUM_TREES: "50"
+      HSTREE_MAX_DEPTH: "15"
+      HSTREE_EXCLUDE_FIELDS: "source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber"
+      SHAP_BACKGROUND_SIZE: "100"
+      SHAP_NSAMPLES: "100"
+      SHAP_ENABLED: "true"
+      EXPLAINABILITY_SEED: "${OC15_SEED}"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      DASMA_ENABLED: "1"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/explainability/v2/explainability_v2.py"]
+    restart: "no"

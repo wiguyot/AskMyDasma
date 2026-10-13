@@ -1,0 +1,50 @@
+{
+  "campaign": "oc14-explainability-v2-capacity",
+  "fixture_version": 1,
+  "source_csv": "tests/fixtures/explainability_v2/oc14_capacity_source.csv",
+  "source_csv_sha256": "2661a4e2fe13d4f3e3912895cc8130dc7ea23e92815b695b6df1458afc9c1b7c",
+  "group_count": 1,
+  "group": "OC14-Capacity",
+  "expected_total_events": 124,
+  "expected_warmup_events": 99,
+  "expected_shap_events": 25,
+  "feature_count": 81,
+  "expected_budgets": [
+    100,
+    1000,
+    1500,
+    2000
+  ],
+  "producer_emission": {
+    "time_delay_seconds": 0.05,
+    "nominal_events_per_second": 20.0
+  },
+  "campaign_env": {
+    "HSTREE_INITIAL_WINDOW_SIZE": "100",
+    "HSTREE_WINDOW_SIZE": "2048",
+    "HSTREE_NUM_TREES": "50",
+    "HSTREE_MAX_DEPTH": "15",
+    "HSTREE_EXCLUDE_FIELDS": "source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber",
+    "HSTREE_ANOMALY_K_SIGMA": "3.0",
+    "HSTREE_ANOMALY_MIN_SAMPLES": "2",
+    "HSTREE_THRESHOLD_MODE": "welford-windowed",
+    "SHAP_BACKGROUND_SIZE": "100",
+    "SHAP_ENABLED": "true",
+    "EXPLAINABILITY_SEED": "42",
+    "ANALYSE_SEED": "42",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1"
+  },
+  "offline_benchmark": {
+    "background": 100,
+    "min_calls_per_budget": 3
+  },
+  "design_notes": [
+    "Capacity fixture: 81 numeric features (historical case), deterministic varied values, no anomaly demonstration goal.",
+    "HSTREE_INITIAL_WINDOW_SIZE=100 with SHAP_BACKGROUND_SIZE=100: events 1..99 are warmup (no local score), events 100..124 are SHAP-eligible.",
+    "Producer emission 20 events/s nominal (TIME_DELAY=0.05) is far above the expected SHAP consumption capacity at high budgets, so the lag ramps up and then drains.",
+    "Each budget runs a fresh isolated campaign: resources carry the run id and the budget suffix and are never deleted."
+  ]
+}

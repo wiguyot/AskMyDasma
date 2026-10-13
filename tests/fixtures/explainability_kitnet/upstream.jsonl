@@ -1,0 +1,9 @@
+{"timestamp":"2026-09-29T10:00:00Z","Group":"K","source_event_id":"warm-zero","kitnet_score":0.0,"kitnet_status":"warming_up","kitnet_anomaly":null,"kitnet_threshold":null}
+{"timestamp":"2026-09-29T10:00:01Z","Group":"K","source_event_id":"warm-nonzero","kitnet_score":0.25,"kitnet_status":"warming_up","kitnet_anomaly":null,"kitnet_threshold":null}
+{"timestamp":"2026-09-29T10:00:02Z","Group":"K","source_event_id":"computed","kitnet_score":0.7,"kitnet_status":"normal","kitnet_anomaly":false,"kitnet_threshold":0.8}
+{"timestamp":"2026-09-29T10:00:03Z","Group":"K","source_event_id":"invalid-warmup","kitnet_score":0.0,"kitnet_status":"warming_up","kitnet_anomaly":null,"kitnet_threshold":null}
+{"timestamp":"2026-09-29T10:00:04Z","Group":"K","source_event_id":"invalid-ready","kitnet_score":0.9,"kitnet_status":"anomaly","kitnet_anomaly":true,"kitnet_threshold":0.8}
+{"timestamp":"2026-09-29T10:00:05Z","Group":"K","source_event_id":"divergent","kitnet_score":0.4,"kitnet_status":"normal","kitnet_anomaly":false,"kitnet_threshold":0.8}
+{"timestamp":"2026-09-29T10:00:06Z","Group":"K","source_event_id":"duplicate","kitnet_score":0.3,"kitnet_status":"normal","kitnet_anomaly":false,"kitnet_threshold":0.8}
+{"timestamp":"2026-09-29T10:00:07Z","Group":"K","source_event_id":"duplicate","kitnet_score":0.31,"kitnet_status":"normal","kitnet_anomaly":false,"kitnet_threshold":0.8}
+{"timestamp":"2026-09-29T10:00:08Z","Group":"K","source_event_id":"upstream-only","kitnet_score":0.5,"kitnet_status":"normal","kitnet_anomaly":false,"kitnet_threshold":0.8}

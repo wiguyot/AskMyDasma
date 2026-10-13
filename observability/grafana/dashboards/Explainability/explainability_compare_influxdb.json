@@ -1,0 +1,271 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "always",
+            "axisPlacement": "left",
+            "axisWidth": 120
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"explainability\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"explainability\")\n  |> filter(fn: (r) => r._field == \"shap_base_value\" or r._field == \"local_score\")\n  |> filter(fn: (r) => if \"${group}\" == \"\" or \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> map(fn: (r) => ({ r with _field: if r._field == \"local_score\" then \"local_model_score\" else r._field }))\n  |> drop(columns: [\"host\", \"_measurement\"])\n  |> group(columns: [\"_field\", \"Group\"])\n  |> aggregateWindow(every: 1s, fn: last, createEmpty: false)\n  |> drop(columns: [\"source_event_id\", \"host\"])\n  |> yield(name: \"v1\")",
+          "refId": "A"
+        }
+      ],
+      "title": "shap_base_value and local_model_score (v1)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+      "custom": {
+        "drawStyle": "line",
+        "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "always",
+            "axisPlacement": "left",
+            "axisWidth": 120
+      }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"explainability-v2\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"explainability-v2\")\n  |> filter(fn: (r) => r._field == \"shap_base_value\" or r._field == \"local_score\")\n  |> filter(fn: (r) => if \"${group}\" == \"\" or \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> map(fn: (r) => ({ r with _field: if r._field == \"local_score\" then \"local_model_score\" else r._field }))\n  |> drop(columns: [\"host\", \"_measurement\"])\n  |> group(columns: [\"_field\", \"Group\"])\n  |> aggregateWindow(every: 1s, fn: last, createEmpty: false)\n  |> drop(columns: [\"source_event_id\", \"host\"])\n  |> yield(name: \"v2\")",
+          "refId": "A"
+        }
+      ],
+      "title": "shap_base_value and local_model_score (v2)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "axisPlacement": "left",
+            "axisWidth": 120
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "fieldSel = if \"${feature}\" == \"\" then \"ALL\" else \"${feature}\"\ngroupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nban = [\"timestamp\",\"LabviewTime\",\"LabViewTime\",\"StepNumber\",\"Cycle\"]\n\nfrom(bucket: \"source-data\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"source-data\")\n  |> filter(fn: (r) => not contains(value: r._field, set: ban))\n  |> filter(fn: (r) => fieldSel == \"ALL\" or r._field == fieldSel)\n  |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n  |> drop(columns: [\"host\", \"_measurement\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Source elements",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "influxdb", "uid": "influxdb-dasma"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "points", "lineWidth": 0, "fillOpacity": 0, "showPoints": "always", "pointSize": 5, "scaleDistribution": {"type": "symlog", "log": 10, "linearThreshold": 1}, "axisPlacement": "left", "axisWidth": 120}}, "overrides": []},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 38},
+      "id": 8,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": false}, "tooltip": {"mode": "multi", "sort": "none"}},
+      "targets": [{
+        "datasource": {"type": "influxdb", "uid": "influxdb-dasma"},
+        "refId": "A",
+      "query": "featureSel = if \"${feature}\" == \"\" then \"ALL\" else \"${feature}\"\n\nfrom(bucket: \"explainability-shap-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"explainability-shap-diff\")\n  |> filter(fn: (r) => r._field == \"value_v1\" or r._field == \"value_v2\")\n  |> filter(fn: (r) => if \"${group}\" == \"\" or \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> filter(fn: (r) => featureSel == \"ALL\" or r.feature == featureSel)\n  |> filter(fn: (r) => r.feature != \"\")\n  |> map(fn: (r) => ({ r with _field: if r._field == \"value_v1\" then \"v1\" else \"v2\" }))\n  |> keep(columns: [\"_time\", \"_value\", \"Group\", \"feature\", \"_field\"])\n  |> group(columns: [\"Group\", \"feature\", \"_field\"])"
+      }],
+      "title": "SHAP values V1/V2 (precomputed)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "influxdb", "uid": "influxdb-dasma"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "points", "lineWidth": 0, "fillOpacity": 0, "pointSize": 5, "axisPlacement": "left", "axisWidth": 120}}, "overrides": []},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 47},
+      "id": 9,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": false}, "tooltip": {"mode": "multi", "sort": "none"}},
+      "targets": [{
+        "datasource": {"type": "influxdb", "uid": "influxdb-dasma"},
+        "refId": "A",
+      "query": "featureSel = if \"${feature}\" == \"\" then \"ALL\" else \"${feature}\"\n\nfrom(bucket: \"explainability-shap-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"explainability-shap-diff\")\n  |> filter(fn: (r) => r._field == \"difference\")\n  |> filter(fn: (r) => if \"${group}\" == \"\" or \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> filter(fn: (r) => featureSel == \"ALL\" or r.feature == featureSel)\n  |> filter(fn: (r) => r.feature != \"\")\n  |> keep(columns: [\"_time\", \"_value\", \"Group\", \"feature\", \"_field\"])\n  |> group(columns: [\"Group\", \"feature\"])"
+      }],
+      "title": "SHAP difference V2 - V1 (precomputed)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": [
+    "explainability",
+    "explainability-v2",
+    "compare",
+    "influxdb",
+    "observability"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"source-data\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"source-data\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Group",
+        "multi": false,
+        "name": "group",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"source-data\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"source-data\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nfields =\n  from(bucket: \"source-data\")\n    |> range(start: 2020-01-01T00:00:00Z)\n    |> filter(fn: (r) => r._measurement == \"source-data\")\n    |> keep(columns: [\"_field\"])\n    |> group()\n    |> distinct(column: \"_field\")\n    |> filter(fn: (r) =>\n      r._value != \"timestamp\" and\n      r._value != \"LabViewTime\" and\n      r._value != \"LabviewTime\" and\n      r._value != \"StepNumber\" and\n      r._value != \"Cycle\"\n    )\n    |> keep(columns: [\"_value\"])\n\nunion(tables: [all, fields])\n  |> group()\n  |> sort(columns: [\"_value\"])",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Feature",
+        "multi": false,
+        "name": "feature",
+        "options": [],
+        "query": "import \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nfields =\n  from(bucket: \"source-data\")\n    |> range(start: 2020-01-01T00:00:00Z)\n    |> filter(fn: (r) => r._measurement == \"source-data\")\n    |> keep(columns: [\"_field\"])\n    |> group()\n    |> distinct(column: \"_field\")\n    |> filter(fn: (r) =>\n      r._value != \"timestamp\" and\n      r._value != \"LabViewTime\" and\n      r._value != \"LabviewTime\" and\n      r._value != \"StepNumber\" and\n      r._value != \"Cycle\"\n    )\n    |> keep(columns: [\"_value\"])\n\nunion(tables: [all, fields])\n  |> group()\n  |> sort(columns: [\"_value\"])",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "title": "Explainability v1 vs v2",
+  "uid": "explainability-compare-influxdb",
+  "version": 9
+}

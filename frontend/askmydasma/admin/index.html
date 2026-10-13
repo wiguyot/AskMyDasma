@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AskMyDasma Administration</title>
+    <link rel="stylesheet" href="../styles.css?v=20261013-7">
+  </head>
+  <body>
+    <main class="page page-admin">
+      <section class="hero">
+        <div class="masthead">
+          <div>
+            <p class="eyebrow">Control Console</p>
+            <h1>AskMyDasma Administration</h1>
+            <p class="intro">Monitor the current campaign and manage platform operations.</p>
+          </div>
+          <div class="masthead-actions">
+            <a class="secondary" href="../">Configure campaign</a>
+            <a class="secondary" id="grafana-link" href="http://localhost:3000" target="_blank" rel="noreferrer">Open Grafana</a>
+          </div>
+        </div>
+      </section>
+
+      <div id="message-banner" class="banner banner-info" role="status" aria-live="polite">Loading platform state...</div>
+
+      <!-- 1. Overview -->
+      <section class="panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>Overview</h2>
+            <p class="card-note" id="last-refreshed">Last update: -</p>
+          </div>
+          <dl class="status-list">
+            <div><dt>Platform</dt><dd id="overview-platform">-</dd></div>
+            <div><dt>Campaign</dt><dd id="overview-campaign">-</dd></div>
+            <div><dt>Expected services available</dt><dd id="overview-availability">-</dd></div>
+            <div><dt>Problems</dt><dd id="overview-problems">-</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <!-- 2. Campaign controls -->
+      <section class="panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>Campaign controls</h2>
+            <p class="card-note">Commands act on the current campaign configuration.</p>
+          </div>
+          <div class="actions">
+            <button type="button" id="prepare-again-button">Prepare again</button>
+            <button type="button" class="secondary" id="stop-button">Stop campaign</button>
+            <button type="button" class="secondary" id="reset-button">Reset campaign data</button>
+            <button type="button" class="secondary" id="refresh-button">Refresh</button>
+          </div>
+          <p class="field-help" id="controls-reason" role="status" aria-live="polite"></p>
+          <p id="explainability-v2-forced-warning" class="explainability-v2-forced-warning is-hidden">
+            Warning: this action was forced while explainability was incomplete.
+            The campaign is not complete and may be missing results.
+          </p>
+        </div>
+      </section>
+
+      <!-- 3. Current campaign -->
+      <section class="panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>Current campaign</h2>
+            <p class="card-note">Effective configuration of the campaign saved by the user workspace.</p>
+          </div>
+          <div id="campaign-empty" class="is-hidden"><p class="progress-empty">No current campaign.</p></div>
+          <div id="campaign-details" class="is-hidden">
+            <dl class="status-list">
+              <div><dt>Dataset</dt><dd id="campaign-dataset">-</dd></div>
+              <div><dt>Mode</dt><dd id="campaign-mode">-</dd></div>
+              <div><dt>Selected groups</dt><dd id="campaign-groups">-</dd></div>
+              <div><dt>Excluded fields</dt><dd id="campaign-fields">-</dd></div>
+              <div><dt>Validation mode</dt><dd id="campaign-validation-mode">-</dd></div>
+              <div><dt>Validation detail</dt><dd id="campaign-validation-detail">-</dd></div>
+              <div><dt>Created</dt><dd id="campaign-created">-</dd></div>
+              <div><dt>Started</dt><dd id="campaign-started">-</dd></div>
+              <div><dt>Updated</dt><dd id="campaign-updated">-</dd></div>
+            </dl>
+
+            <h3>Anomaly detection</h3>
+            <div class="admin-table-wrapper">
+              <table class="admin-table models-table models-table-ad" aria-label="Anomaly detection models of the current campaign">
+                <colgroup>
+                  <col class="col-model">
+                  <col class="col-estimator">
+                  <col class="col-estimator-params">
+                  <col class="col-core-params">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Model</th>
+                    <th scope="col">Anomaly estimator</th>
+                    <th scope="col">Estimator parameters</th>
+                    <th scope="col">Core parameters</th>
+                  </tr>
+                </thead>
+                <tbody id="campaign-ad-body"></tbody>
+              </table>
+            </div>
+
+            <h3>Explainability</h3>
+            <div class="admin-table-wrapper">
+              <table class="admin-table models-table models-table-explainability" aria-label="Explainability services of the current campaign">
+                <colgroup>
+                  <col class="col-expl-service">
+                  <col class="col-expl-model">
+                  <col class="col-expl-mode">
+                  <col class="col-expl-method">
+                  <col class="col-expl-params">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Service</th>
+                    <th scope="col">Model to explain</th>
+                    <th scope="col">Mode</th>
+                    <th scope="col">Method</th>
+                    <th scope="col">Parameters</th>
+                  </tr>
+                </thead>
+                <tbody id="campaign-expl-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Processing progress -->
+      <section class="panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>Processing progress</h2>
+            <p class="card-note">Per-pipeline counts. A 100% percentage never implies completion.</p>
+          </div>
+          <div id="campaign-progress" class="progress-list">
+            <p class="progress-empty">No progress available.</p>
+          </div>
+          <div id="explainability-v2-progress" class="explainability-v2-progress is-hidden" data-v2-state="idle">
+            <div class="progress-item-head">
+              <strong>Explainability v2</strong>
+              <span id="explainability-v2-state" class="badge v2-state-unknown">Unknown</span>
+            </div>
+            <div class="progress-item-meta">
+              <span id="explainability-v2-lag">Consumer lag: -</span>
+              <span id="explainability-v2-records">Published: -</span>
+            </div>
+            <p id="explainability-v2-reason" class="explainability-v2-reason">-</p>
+            <p class="explainability-v2-note">Complete is confirmed only after v2 delivery and commit.</p>
+          </div>
+          <div id="explainability-v1-progress" class="explainability-v2-progress is-hidden" data-v1-state="idle">
+            <div class="progress-item-head">
+              <strong>Explainability</strong>
+              <span id="explainability-v1-state" class="badge v2-state-unknown">Unknown</span>
+            </div>
+            <div class="progress-item-meta">
+              <span id="explainability-v1-lag">Consumer lag: -</span>
+              <span id="explainability-v1-records">Published: -</span>
+            </div>
+            <p id="explainability-v1-reason" class="explainability-v2-reason">-</p>
+            <p class="explainability-v2-note">Complete is confirmed only after V1 delivery and commit (at least once).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. Services -->
+      <section class="panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>Services</h2>
+            <p class="card-note">Docker state of observed and expected services, grouped by role.</p>
+          </div>
+          <div class="admin-table-wrapper">
+            <table class="admin-table" aria-label="Platform services">
+              <colgroup>
+                <col class="col-svc-name">
+                <col class="col-svc-role">
+                <col class="col-svc-expected">
+                <col class="col-svc-state">
+                <col class="col-svc-health">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">Service</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Expected</th>
+                  <th scope="col">State</th>
+                  <th scope="col">Health</th>
+                </tr>
+              </thead>
+              <tbody id="services-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. Activity log -->
+      <section class="panel">
+        <div class="card">
+          <details id="activity-log-panel">
+            <summary>Activity log</summary>
+            <p class="field-help">Console journal only: actions and errors observed by this page, not container logs. Keeps the last 200 entries.</p>
+            <pre id="log-output" aria-live="polite">Console started.</pre>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <script src="../app.js?v=20261013-2"></script>
+  </body>
+</html>

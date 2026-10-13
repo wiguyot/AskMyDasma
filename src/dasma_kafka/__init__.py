@@ -1,0 +1,2 @@
+"""DASMA Kafka application package."""
+

@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB DASMA
+    uid: influxdb-dasma
+    type: influxdb
+    access: proxy
+    isDefault: false
+    editable: false
+    url: http://influxdb:8086
+    jsonData:
+      version: Flux
+      organization: dasma
+      defaultBucket: source-data
+    secureJsonData:
+      token: dasma-super-token

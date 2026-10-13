@@ -1,0 +1,4 @@
+{"timestamp":"2020-12-15 11:34:22","Group":"G1","source_event_id":"event-000001","hstree_score":0.0,"hstree_status":"warming_up","hstree_anomaly":null,"hstree_threshold":null}
+{"timestamp":"2020-12-15 11:34:23","Group":"G1","source_event_id":"event-000002","hstree_score":-1.25,"hstree_status":"normal","hstree_anomaly":false,"hstree_threshold":-0.75}
+{"timestamp":"2020-12-15 11:34:24","Group":"G2","source_event_id":"event-000003","hstree_score":-9.5,"hstree_status":"anomaly","hstree_anomaly":true,"hstree_threshold":-2.0}
+{"timestamp":"2020-12-15 11:34:25","Group":"G2","source_event_id":"event-000004","hstree_score":-2.0,"hstree_status":"normal","hstree_anomaly":false,"hstree_threshold":-3.0}

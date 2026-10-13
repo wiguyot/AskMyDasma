@@ -1,0 +1,135 @@
+# OC-12 dedicated campaign services (non-destructive override).
+#
+# Every resource created for the campaign carries the OC-12 run id: topics,
+# consumer groups, Avro subjects (TopicNameStrategy derives the subject from
+# the dedicated topic names) and the InfluxDB measurement. The standard
+# compose resources are never touched. The runner refuses to start if the
+# standard compute services are already running.
+#
+# All service names, container names, topics, groups and the measurement are
+# derived from OC12_RUN_ID, which the runner generates per campaign run.
+
+services:
+  oc12-producer:
+    image: dasma-kafka-producer:0.1.0
+    container_name: oc12-producer-${OC12_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      TOPIC_NAME: "oc12-source-${OC12_RUN_ID}"
+      DATA_SOURCE_FILE: "tests/fixtures/explainability_v2/oc12_source.csv"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TIME_DELAY: "0.0001"
+      PIP_CACHE_DIR: "/pip-cache"
+      DASMA_PRODUCER_TRANSFORMATION: ""
+      DASMA_SELECTED_GROUPS: ""
+      DASMA_EXCLUDED_FIELDS: ""
+      DASMA_PRODUCER_WAIT_FOR_START: "0"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    restart: "no"
+
+  oc12-hstree:
+    image: dasma-kafka-anomaly-light:0.1.0
+    container_name: oc12-hstree-${OC12_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "oc12-source-${OC12_RUN_ID}"
+      KAFKA_DEST_TOPIC: "oc12-hstree-${OC12_RUN_ID}"
+      KAFKA_DEST_VIZ_TOPIC: "oc12-hstree-viz-${OC12_RUN_ID}"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      HSTREE_INITIAL_WINDOW_SIZE: "100"
+      HSTREE_WINDOW_SIZE: "2048"
+      HSTREE_NUM_TREES: "50"
+      HSTREE_MAX_DEPTH: "15"
+      HSTREE_EXCLUDE_FIELDS: "source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber"
+      HSTREE_ANOMALY_K_SIGMA: "3.0"
+      HSTREE_ANOMALY_MIN_SAMPLES: "2"
+      HSTREE_THRESHOLD_MODE: "welford-windowed"
+      ANALYSE_HSTREE_GROUP_ID: "oc12-hstree-consumer-${OC12_RUN_ID}"
+      ANALYSE_SEED: "42"
+      DASMA_ENABLED: "1"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/detectors/hstree/hstree_analysis.py"]
+    restart: "no"
+
+  oc12-v2:
+    image: dasma-kafka-explainability:0.1.0
+    container_name: oc12-v2-${OC12_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "oc12-hstree-${OC12_RUN_ID}"
+      EXPLAINABILITY_MODEL: "hstree"
+      EXPLAINABILITY_MODE: "reference"
+      EXPLAINABILITY_METHOD: "kernel"
+      KAFKA_DEST_TOPIC: "oc12-v2-${OC12_RUN_ID}"
+      KAFKA_DEST_TOPIC_JSON: "oc12-v2-viz-${OC12_RUN_ID}"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      EXPLAINABILITY_GROUP_ID: "oc12-v2-consumer-${OC12_RUN_ID}"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      HSTREE_INITIAL_WINDOW_SIZE: "100"
+      HSTREE_WINDOW_SIZE: "2048"
+      HSTREE_NUM_TREES: "50"
+      HSTREE_MAX_DEPTH: "15"
+      HSTREE_EXCLUDE_FIELDS: "source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber"
+      SHAP_BACKGROUND_SIZE: "100"
+      SHAP_NSAMPLES: "100"
+      SHAP_ENABLED: "true"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      DASMA_ENABLED: "1"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/explainability/v2/explainability_v2.py"]
+    restart: "no"
+
+  oc12-telegraf:
+    image: telegraf:1.30
+    container_name: oc12-telegraf-${OC12_RUN_ID}
+    volumes:
+      - ./observability/telegraf/telegraf-oc12.conf:/etc/telegraf/telegraf.conf:ro
+    environment:
+      OC12_V2_VIZ_TOPIC: "oc12-v2-viz-${OC12_RUN_ID}"
+      OC12_TELEGRAF_GROUP: "oc12-telegraf-consumer-${OC12_RUN_ID}"
+      OC12_MEASUREMENT: "oc12-v2-${OC12_RUN_ID}"
+      INFLUX_TOKEN: "dasma-super-token"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    restart: "no"

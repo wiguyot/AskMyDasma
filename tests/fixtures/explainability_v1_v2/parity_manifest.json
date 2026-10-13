@@ -1,0 +1,37 @@
+{
+  "campaign": "v1-v2-parity",
+  "comparison_key": "(Group, source_event_id)",
+  "group": "PARITY-Campaign",
+  "source_csv": "tests/fixtures/explainability_v1_v2/source.csv",
+  "exports": {
+    "v1": "tests/fixtures/explainability_v1_v2/v1_export.jsonl",
+    "v2": "tests/fixtures/explainability_v1_v2/v2_export.jsonl"
+  },
+  "expected_keys": [
+    "PARITY-Campaign|row-1",
+    "PARITY-Campaign|row-2",
+    "PARITY-Campaign|row-3",
+    "PARITY-Campaign|row-4a",
+    "PARITY-Campaign|row-4b",
+    "PARITY-Campaign|dup-1",
+    "PARITY-Campaign|dup-2"
+  ],
+  "expected_warmup_count": 1,
+  "warmup_keys": [
+    "PARITY-Campaign|row-1"
+  ],
+  "numeric_tolerances": {
+    "absolute_tolerance": 1e-12,
+    "relative_tolerance": 1e-12
+  },
+  "design_notes": [
+    "V1-05a fixtures: identity indexing only, no numeric comparison.",
+    "row-4a and row-4b share the same timestamp with distinct source_event_id.",
+    "dup-1 appears twice with different shap_computation_time_ms only.",
+    "dup-2 appears twice with conflicting shap_base_value.",
+    "V1-05c: exports.v1/exports.v2 reference the JSONL exports compared by the CLI.",
+    "V1-06 fix: computed shap_values carry the transport metadata Group and",
+    "source_event_id like the real exports; they are excluded from the SHAP",
+    "comparison and stay owned by the canonical record identity."
+  ]
+}

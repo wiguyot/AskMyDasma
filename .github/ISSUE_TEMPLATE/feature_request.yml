@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest a change or a new capability.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem should this solve?
+      description: Explain who needs this and why.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: Describe the change or result you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Other approaches
+      description: Have you considered another way to solve the problem?
+    validations:
+      required: false

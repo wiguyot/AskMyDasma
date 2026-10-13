@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dasma-kafka/experiments/explainability/v1_v2/parity_manifest.schema.json",
+  "title": "V1/V2 parity manifest",
+  "description": "Manifest of an explainability V1/V2 parity comparison (V1-05). It declares the campaign, the exclusive comparison key, the JSONL exports to compare, the expected event identities and the numeric tolerances. The comparison itself never widens a tolerance and never invents a SHAP comparison for a non-computed status.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "campaign",
+    "comparison_key",
+    "exports",
+    "expected_keys",
+    "numeric_tolerances"
+  ],
+  "properties": {
+    "campaign": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Campaign name carried into the report envelope."
+    },
+    "comparison_key": {
+      "const": "(Group, source_event_id)",
+      "description": "Exclusive identity key. No timestamp fallback, no coercion: both parts must be real non-empty strings."
+    },
+    "exports": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v1", "v2"],
+      "properties": {
+        "v1": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path of the V1 JSONL export (one JSON object per non-empty line). Relative paths are resolved against the current working directory; the CLI rejects a missing file with a distinct error."
+        },
+        "v2": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path of the V2 JSONL export (one JSON object per non-empty line). Relative paths are resolved against the current working directory; the CLI rejects a missing file with a distinct error."
+        }
+      }
+    },
+    "expected_keys": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[^|]+\\|[^|]+$",
+        "description": "Expected event identity, exactly one 'Group|source_event_id' with no empty part."
+      },
+      "description": "Non-empty, duplicate-free list of the identities the campaign must deliver on both sides."
+    },
+    "numeric_tolerances": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["absolute_tolerance", "relative_tolerance"],
+      "properties": {
+        "absolute_tolerance": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum absolute gap still tolerated as technical parity (atol check first)."
+        },
+        "relative_tolerance": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum relative gap still tolerated as technical parity, checked only when the denominator is non-zero."
+        }
+      },
+      "description": "Numeric tolerances applied by the comparator; both must be >= 0."
+    }
+  }
+}

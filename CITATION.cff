@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use AskMyDasma in research or a publication, please cite the project and its authors using the metadata in this file."
+title: "AskMyDasma"
+license: MIT
+authors:
+  - family-names: "Guyot-Lénat"
+    given-names: "William"
+    email: "william.guyot@limos.fr"
+    affiliation: "LIMOS / ISIMA / INP / Université Clermont Auvergne"
+version: "0.1.0"

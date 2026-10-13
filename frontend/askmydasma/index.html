@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AskMyDasma</title>
+    <link rel="stylesheet" href="./styles.css?v=20261013-7">
+  </head>
+  <body>
+    <main class="page page-user">
+      <section class="hero hero-user">
+        <div class="masthead">
+          <div>
+            <p class="eyebrow">User Workspace</p>
+            <h1>AskMyDasma</h1>
+            <p class="intro">
+              Select a dataset and start the analysis. Operational controls stay in the administration area.
+            </p>
+          </div>
+          <div class="masthead-actions">
+            <a class="secondary" href="./admin/">Open administration</a>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="panel user-layout">
+        <div class="card">
+          <div class="card-head">
+          </div>
+
+          <form id="launch-form">
+            <div class="config-top-row">
+              <div class="config-dataset">
+                <label for="dataset"><span class="step-number">1.</span> <strong>Dataset</strong></label>
+                <select id="dataset" name="dataset_path"></select>
+                <p class="field-help" id="dataset-help">Loading available datasets...</p>
+              </div>
+              <fieldset class="validation-mode" id="validation-mode">
+                <legend>Validation mode</legend>
+                <div class="validation-mode-option">
+                  <input type="checkbox" id="validation-mode-repeatability">
+                  <label for="validation-mode-repeatability">Repeatability</label>
+                </div>
+                <div class="validation-mode-option">
+                  <input type="checkbox" id="validation-mode-reproducibility">
+                  <label for="validation-mode-reproducibility">Reproducibility</label>
+                </div>
+                <div class="reproducibility-settings is-hidden" id="reproducibility-settings" hidden>
+                  <label for="reproducibility-source-role" class="model-param-label">Source role:</label>
+                  <select id="reproducibility-source-role" name="reproducibility_source_role">
+                    <option value="" selected>—</option>
+                    <option value="source-1">source-1</option>
+                    <option value="source-2">source-2</option>
+                  </select>
+                  <label for="reproducibility-campaign-id" class="model-param-label">Campaign ID:</label>
+                  <input type="text" id="reproducibility-campaign-id" name="reproducibility_campaign_id" placeholder="campaign-42" maxlength="128">
+                  <p class="field-help">Cross-machine reproducibility: the same campaign-id must be used on both machines, with different roles (source-1 on one, source-2 on the other).</p>
+                </div>
+              </fieldset>
+            </div>
+
+            <label for="mode"><span class="step-number">2.</span> <strong>Mode</strong></label>
+            <select id="mode" name="mode">
+              <option value="realtime">Realtime 1 msg/s</option>
+              <option value="realtime-x5">Realtime 5 msg/s</option>
+              <option value="realtime-x20">Realtime 20 msg/s</option>
+              <option value="realtime-x100" selected>Realtime 100 msg/s</option>
+              <option value="batch">Batch</option>
+            </select>
+            <p class="field-help">960-record warmup, then simulated rate based on the selected mode.</p>
+
+            <div id="dataset-time-range-block" class="dataset-time-range is-hidden">
+              <h3>Dataset time summary</h3>
+              <dl class="status-list compact">
+                <div><dt>Rows</dt><dd id="dataset-row-count">-</dd></div>
+                <div><dt>Time column</dt><dd id="dataset-time-column">-</dd></div>
+                <div><dt>Start</dt><dd id="dataset-time-start">-</dd></div>
+                <div><dt>End</dt><dd id="dataset-time-end">-</dd></div>
+                <div><dt>Coverage</dt><dd id="dataset-time-duration">-</dd></div>
+                <div><dt>Status</dt><dd id="dataset-time-status">-</dd></div>
+              </dl>
+            </div>
+
+            <label><span class="step-number">3.</span> <strong>Models</strong></label>
+            <div class="models-section" id="model-checkboxes">
+              <table class="models-table models-table-ad" aria-label="Anomaly detection models">
+                <colgroup>
+                  <col class="col-enabled">
+                  <col class="col-model">
+                  <col class="col-estimator">
+                  <col class="col-estimator-params">
+                  <col class="col-core-params">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Enabled</th>
+                    <th scope="col">Model</th>
+                    <th scope="col">Anomaly estimator</th>
+                    <th scope="col">Estimator parameters</th>
+                    <th scope="col">Core parameters</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="model-row" id="hstree-params" data-model="hstree">
+                    <td class="cell-enabled" data-label="Enabled">
+                      <label class="model-checkbox"><input type="checkbox" id="model-hstree" value="hstree" checked aria-label="Enable HSTree"></label>
+                    </td>
+                    <td class="cell-model" data-label="Model">
+                      <a class="model-dashboard-link" href="http://localhost:3000/d/source-data-hstree-influxdb/features-hstree?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" data-grafana-path="/d/source-data-hstree-influxdb/features-hstree?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" target="_blank" rel="noreferrer">HSTree</a><button type="button" class="param-info" data-info="Half-Space Trees (Tan et al., 2011). Choose the PySAD or Paper implementation in Core parameters.">i</button>
+                      <div class="repeatability-wrapper is-hidden" hidden id="repeatability-hstree-wrapper">
+                        <label for="repeatability-hstree" class="model-param-label">Repeatability<button type="button" class="param-info" data-info="Runs two deterministic instances of the model and compares their outputs.">i</button></label>
+                        <input type="checkbox" id="repeatability-hstree" name="hstree_repeatability">
+                      </div>
+                      <div class="reproducibility-wrapper is-hidden" hidden id="reproducibility-hstree-wrapper">
+                        <label for="reproducibility-hstree" class="model-param-label">Reproducibility<button type="button" class="param-info" data-info="Tags this campaign for cross-machine reproducibility: the same model, data and parameters, run on another machine.">i</button></label>
+                        <input type="checkbox" id="reproducibility-hstree" name="hstree_reproducibility">
+                      </div>
+                    </td>
+                    <td class="cell-estimator" data-label="Anomaly estimator">
+                      <select id="hstree-estimator" name="hstree_estimator" aria-label="HSTree anomaly estimator">
+                        <option value="p99" selected>P99 sliding window</option>
+                        <option value="welford">Welford (K×σ)</option>
+                        <option value="welford-windowed">Welford windowed (K×σ)</option>
+                      </select>
+                    </td>
+                    <td class="cell-estimator-params" data-label="Estimator parameters">
+                      <details class="model-params-panel">
+                        <summary class="model-param-label" aria-label="HSTree estimator parameters">Parameters</summary>
+                        <div class="model-params-panel-body">
+                          <div class="param-field" id="hstree-p99-params">
+                            <label for="hstree-window" class="model-param-label">P99 window:</label>
+                            <input type="number" id="hstree-window" name="hstree_threshold_window" value="500" min="50" max="50000" step="50">
+                            <span class="model-param-hint">recent scores used to calibrate HSTree threshold</span>
+                          </div>
+                          <div class="param-field is-hidden" id="hstree-welford-params">
+                            <label for="hstree-k-sigma" class="model-param-label">K Sigma:</label>
+                            <input type="number" id="hstree-k-sigma" name="hstree_anomaly_k_sigma" value="3.0" min="0.1" max="20" step="0.1">
+                            <label for="hstree-warmup-window" class="model-param-label">Warmup window:</label>
+                            <input type="number" id="hstree-warmup-window" name="hstree_anomaly_warmup_window" value="100" min="2" max="50000" step="1">
+                            <div class="param-field is-hidden" id="hstree-welford-window-params">
+                              <label for="hstree-welford-window" class="model-param-label">Welford window:</label>
+                              <input type="number" id="hstree-welford-window" name="hstree_welford_window" value="2048" min="1" max="200000" step="1">
+                              <span class="model-param-hint">sliding K×σ baseline window (default: 2048 scores)</span>
+                            </div>
+                            <span class="model-param-hint">threshold = mean + k_sigma × std</span>
+                          </div>
+                        </div>
+                      </details>
+                    </td>
+                    <td class="cell-core-params" data-label="Core parameters">
+                      <details class="model-core-params">
+                        <summary class="model-param-label" aria-label="HSTree core parameters">Core parameters</summary>
+                        <div class="model-core-params-grid">
+                          <label for="hstree-initial-window-size" class="model-param-label">Initial window (matches Window size):<button type="button" class="param-info" data-info="This value follows Window size and cannot be changed independently. The paper-style reference window uses the same event count for both.">i</button></label>
+                          <input type="number" id="hstree-initial-window-size" name="hstree_initial_window_size" value="256" min="1" max="10000" step="1" readonly>
+                          <label for="hstree-window-size" class="model-param-label">Window size:<button type="button" class="param-info" data-info="Reference window ψ: number of events that form each reference mass profile (paper: 250).">i</button></label>
+                          <input type="number" id="hstree-window-size" name="hstree_window_size" value="256" min="64" max="100000" step="64">
+                          <label for="hstree-num-trees" class="model-param-label">Num trees:<button type="button" class="param-info" data-info="Number of half-space trees (paper default 25). More trees reduce variance but increase CPU and SHAP cost.">i</button></label>
+                          <input type="number" id="hstree-num-trees" name="hstree_num_trees" value="25" min="1" max="500" step="1">
+                          <label for="hstree-variant" class="model-param-label">HSTree variant:<button type="button" class="param-info" data-info="Choose the PySAD-compatible implementation or the algorithm described by Tan et al. (2011). The paper variant changes score semantics.">i</button></label>
+                          <select id="hstree-variant" name="hstree_variant" aria-describedby="hstree-variant-help">
+                            <option value="pysad">PySAD</option>
+                            <option value="paper" selected>Paper (Tan et al., 2011)</option>
+                          </select>
+                          <div id="hstree-variant-help" class="hstree-variant-help" lang="en">
+                            <p>Both look for points in <strong>sparsely populated regions</strong>, but calculate their scores differently:</p>
+                            <ul>
+                              <li><strong>PySAD</strong> adds up the population counts encountered <strong>along the entire path</strong> in each tree.</li>
+                              <li><strong>Paper</strong> uses only the population count of the <strong>region where traversal stops</strong>: a leaf or a region that is already sparse enough.</li>
+                            </ul>
+                            <p>Another difference: PySAD starts from the same bounds for all trees; Paper varies these bounds randomly from one tree to another.</p>
+                            <p><strong>Paper implements the original article’s per-tree bounds and terminal-node scoring</strong>, using PySAD as its foundation. This does not necessarily mean better performance on your data.</p>
+                          </div>
+                          <label for="hstree-max-depth" class="model-param-label">Max depth:<button type="button" class="param-info" data-info="Maximum depth of each half-space tree. Deeper trees can capture finer-grained anomalies but need more data to be reliable.">i</button></label>
+                          <input type="number" id="hstree-max-depth" name="hstree_max_depth" value="15" min="1" max="50" step="1">
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                  <tr class="model-row" id="iforest-params" data-model="iforest">
+                    <td class="cell-enabled" data-label="Enabled">
+                      <label class="model-checkbox"><input type="checkbox" id="model-iforest" value="iforest" checked aria-label="Enable IForest"></label>
+                    </td>
+                    <td class="cell-model" data-label="Model">
+                      <a class="model-dashboard-link" href="http://localhost:3000/d/source-data-iforest-influxdb/features-iforest?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" data-grafana-path="/d/source-data-iforest-influxdb/features-iforest?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" target="_blank" rel="noreferrer">IForest</a>
+                      <div class="repeatability-wrapper is-hidden" hidden id="repeatability-iforest-wrapper">
+                        <label for="repeatability-iforest" class="model-param-label">Repeatability<button type="button" class="param-info" data-info="Runs two deterministic instances of the model and compares their outputs.">i</button></label>
+                        <input type="checkbox" id="repeatability-iforest" name="iforest_repeatability">
+                      </div>
+                      <div class="reproducibility-wrapper is-hidden" hidden id="reproducibility-iforest-wrapper">
+                        <label for="reproducibility-iforest" class="model-param-label">Reproducibility<button type="button" class="param-info" data-info="Tags this campaign for cross-machine reproducibility: the same model, data and parameters, run on another machine.">i</button></label>
+                        <input type="checkbox" id="reproducibility-iforest" name="iforest_reproducibility">
+                      </div>
+                    </td>
+                    <td class="cell-estimator" data-label="Anomaly estimator">
+                      <select id="iforest-estimator" name="iforest_estimator" aria-label="IForest anomaly estimator">
+                        <option value="native" selected>Native (Isolation Forest)</option>
+                        <option value="welford">Welford (K×σ)</option>
+                        <option value="welford-windowed">Welford windowed (K×σ)</option>
+                        <option value="p99">P99 sliding window</option>
+                      </select>
+                    </td>
+                    <td class="cell-estimator-params" data-label="Estimator parameters">
+                      <details class="model-params-panel" id="iforest-estimator-panel">
+                        <summary class="model-param-label" aria-label="IForest estimator parameters">Parameters</summary>
+                        <div class="model-params-panel-body">
+                          <div class="param-field is-hidden" id="iforest-welford-params">
+                            <label for="iforest-k-sigma" class="model-param-label">K Sigma:</label>
+                            <input type="number" id="iforest-k-sigma" name="iforest_anomaly_k_sigma" value="3.0" min="0.1" max="20" step="0.1">
+                            <label for="iforest-warmup-window" class="model-param-label">Warmup window:</label>
+                            <input type="number" id="iforest-warmup-window" name="iforest_anomaly_warmup_window" value="100" min="2" max="50000" step="1">
+                            <div class="param-field is-hidden" id="iforest-welford-window-params">
+                              <label for="iforest-welford-window" class="model-param-label">Welford window:</label>
+                              <input type="number" id="iforest-welford-window" name="iforest_welford_window" value="2048" min="1" max="200000" step="1">
+                              <span class="model-param-hint">sliding K×σ baseline window (default 2048 = IForest reference window)</span>
+                            </div>
+                            <span class="model-param-hint">threshold = mean + k_sigma × std</span>
+                          </div>
+                          <div class="param-field is-hidden" id="iforest-p99-params">
+                            <label for="iforest-window" class="model-param-label">P99 window:</label>
+                            <input type="number" id="iforest-window" name="iforest_threshold_window" value="500" min="50" max="50000" step="50">
+                            <span class="model-param-hint">recent scores used to calibrate IForest threshold</span>
+                          </div>
+                        </div>
+                      </details>
+                      <span class="param-empty" id="iforest-params-empty">—</span>
+                    </td>
+                    <td class="cell-core-params" data-label="Core parameters">
+                      <details class="model-core-params">
+                        <summary class="model-param-label" aria-label="IForest core parameters">Core parameters</summary>
+                        <div class="model-core-params-grid">
+                          <label for="iforest-initial-window-size" class="model-param-label">Initial window:<button type="button" class="param-info" data-info="Must be at least Max samples (ψ); the default is 2ψ so the first forest already subsamples its training window.">i</button></label>
+                          <input type="number" id="iforest-initial-window-size" name="iforest_initial_window_size" value="512" min="1" max="10000" step="1">
+                          <label for="iforest-window-size" class="model-param-label">Window size:<button type="button" class="param-info" data-info="Size of the sliding window of recent samples used to retrain the model. Larger values give more stable models but are slower to adapt.">i</button></label>
+                          <input type="number" id="iforest-window-size" name="iforest_window_size" value="2048" min="64" max="100000" step="64">
+                          <label for="iforest-n-estimators" class="model-param-label">N estimators:<button type="button" class="param-info" data-info="Number of isolation trees. More trees improve detection quality but increase refit time.">i</button></label>
+                          <input type="number" id="iforest-n-estimators" name="iforest_n_estimators" value="100" min="1" max="1000" step="1">
+                          <label for="iforest-max-samples" class="model-param-label">Max samples (ψ):<button type="button" class="param-info" data-info="Fixed subsample size ψ drawn without replacement for each tree (paper default 256). Initial window must be at least ψ.">i</button></label>
+                          <input type="number" id="iforest-max-samples" name="iforest_max_samples" value="256" min="2" max="10000" step="1">
+                          <label for="iforest-refit-every" class="model-param-label">Refit every:<button type="button" class="param-info" data-info="Number of new samples received before the model is retrained on the latest window. Lower values adapt faster; higher values reduce CPU load.">i</button></label>
+                          <input type="number" id="iforest-refit-every" name="iforest_refit_every" value="128" min="1" max="10000" step="1">
+                          <label for="iforest-contamination" class="model-param-label">Contamination:<button type="button" class="param-info" data-info="This parameter controls the Native estimator only. Auto uses the original Isolation Forest decision rule. A percentage calibrates the native threshold on each training window; it does not guarantee the same anomaly rate on future data.">i</button></label>
+                          <select id="iforest-contamination" name="iforest_contamination">
+                            <option value="auto" selected>Auto</option>
+                            <option value="0.01">1%</option>
+                            <option value="0.02">2%</option>
+                            <option value="0.03">3%</option>
+                            <option value="0.04">4%</option>
+                            <option value="0.05">5%</option>
+                            <option value="0.06">6%</option>
+                            <option value="0.07">7%</option>
+                            <option value="0.08">8%</option>
+                            <option value="0.09">9%</option>
+                            <option value="0.10">10%</option>
+                            <option value="0.11">11%</option>
+                            <option value="0.12">12%</option>
+                            <option value="0.13">13%</option>
+                            <option value="0.14">14%</option>
+                            <option value="0.15">15%</option>
+                            <option value="0.16">16%</option>
+                            <option value="0.17">17%</option>
+                            <option value="0.18">18%</option>
+                            <option value="0.19">19%</option>
+                            <option value="0.20">20%</option>
+                            <option value="0.21">21%</option>
+                            <option value="0.22">22%</option>
+                            <option value="0.23">23%</option>
+                            <option value="0.24">24%</option>
+                            <option value="0.25">25%</option>
+                            <option value="0.26">26%</option>
+                            <option value="0.27">27%</option>
+                            <option value="0.28">28%</option>
+                            <option value="0.29">29%</option>
+                            <option value="0.30">30%</option>
+                            <option value="0.31">31%</option>
+                            <option value="0.32">32%</option>
+                            <option value="0.33">33%</option>
+                            <option value="0.34">34%</option>
+                            <option value="0.35">35%</option>
+                            <option value="0.36">36%</option>
+                            <option value="0.37">37%</option>
+                            <option value="0.38">38%</option>
+                            <option value="0.39">39%</option>
+                            <option value="0.40">40%</option>
+                            <option value="0.41">41%</option>
+                            <option value="0.42">42%</option>
+                            <option value="0.43">43%</option>
+                            <option value="0.44">44%</option>
+                            <option value="0.45">45%</option>
+                            <option value="0.46">46%</option>
+                            <option value="0.47">47%</option>
+                            <option value="0.48">48%</option>
+                            <option value="0.49">49%</option>
+                            <option value="0.50">50%</option>
+                          </select>
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                  <tr class="model-row" id="kitnet-params" data-model="kitnet">
+                    <td class="cell-enabled" data-label="Enabled">
+                      <label class="model-checkbox"><input type="checkbox" id="model-kitnet" value="kitnet" checked aria-label="Enable KitNET"></label>
+                    </td>
+                    <td class="cell-model" data-label="Model">
+                      <a class="model-dashboard-link" href="http://localhost:3000/d/source-data-kitnet-influxdb/features-kitnet?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" data-grafana-path="/d/source-data-kitnet-influxdb/features-kitnet?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" target="_blank" rel="noreferrer">KitNET</a>
+                      <div class="repeatability-wrapper is-hidden" hidden id="repeatability-kitnet-wrapper">
+                        <label for="repeatability-kitnet" class="model-param-label">Repeatability<button type="button" class="param-info" data-info="Runs two deterministic instances of the model and compares their outputs.">i</button></label>
+                        <input type="checkbox" id="repeatability-kitnet" name="kitnet_repeatability">
+                      </div>
+                      <div class="reproducibility-wrapper is-hidden" hidden id="reproducibility-kitnet-wrapper">
+                        <label for="reproducibility-kitnet" class="model-param-label">Reproducibility<button type="button" class="param-info" data-info="Tags this campaign for cross-machine reproducibility: the same model, data and parameters, run on another machine.">i</button></label>
+                        <input type="checkbox" id="reproducibility-kitnet" name="kitnet_reproducibility">
+                      </div>
+                    </td>
+                    <td class="cell-estimator" data-label="Anomaly estimator">
+                      <select id="kitnet-estimator" name="kitnet_estimator" aria-label="KitNET anomaly estimator">
+                        <option value="welford">Welford (K×σ)</option>
+                        <option value="welford-windowed" selected>Welford windowed (K×σ)</option>
+                        <option value="p99">P99 sliding window</option>
+                      </select>
+                    </td>
+                    <td class="cell-estimator-params" data-label="Estimator parameters">
+                      <details class="model-params-panel">
+                        <summary class="model-param-label" aria-label="KitNET estimator parameters">Parameters</summary>
+                        <div class="model-params-panel-body">
+                          <div class="param-field" id="kitnet-welford-params">
+                            <label for="kitnet-k-sigma" class="model-param-label">K Sigma:</label>
+                            <input type="number" id="kitnet-k-sigma" name="kitnet_anomaly_k_sigma" value="3.0" min="0.1" max="20" step="0.1">
+                            <label for="kitnet-warmup-window" class="model-param-label">Warmup window:</label>
+                            <input type="number" id="kitnet-warmup-window" name="kitnet_anomaly_warmup_window" value="100" min="2" max="50000" step="1">
+                            <div class="param-field is-hidden" id="kitnet-welford-window-params">
+                              <label for="kitnet-welford-window" class="model-param-label">Welford window:</label>
+                              <input type="number" id="kitnet-welford-window" name="kitnet_welford_window" value="1000" min="1" max="200000" step="1">
+                              <span class="model-param-hint">sliding K×σ baseline window (KitNET has no data window; default 1000 = calibration window)</span>
+                            </div>
+                            <span class="model-param-hint">threshold = mean + k_sigma × std</span>
+                          </div>
+                          <div class="param-field is-hidden" id="kitnet-p99-params">
+                            <label for="kitnet-window" class="model-param-label">P99 window:</label>
+                            <input type="number" id="kitnet-window" name="kitnet_threshold_window" value="1000" min="50" max="50000" step="50">
+                            <span class="model-param-hint">recent scores used to calibrate KitNET threshold</span>
+                          </div>
+                        </div>
+                      </details>
+                    </td>
+                    <td class="cell-core-params" data-label="Core parameters">
+                      <details class="model-core-params">
+                        <summary class="model-param-label" aria-label="KitNET core parameters">Core parameters</summary>
+                        <div class="model-core-params-grid">
+                          <label for="kitnet-max-size-ae" class="model-param-label">Max AE size:<button type="button" class="param-info" data-info="Maximum number of inputs per sub-autoencoder. The feature-mapper groups correlated features into clusters no larger than this value.">i</button></label>
+                          <input type="number" id="kitnet-max-size-ae" name="kitnet_max_size_ae" value="10" min="1" max="500" step="1">
+                          <label for="kitnet-grace-feature-mapping" class="model-param-label">Grace FM:<button type="button" class="param-info" data-info="Grace period for Feature Mapping: number of samples used to learn feature correlations before clustering. No anomaly scores are produced during this phase.">i</button></label>
+                          <input type="number" id="kitnet-grace-feature-mapping" name="kitnet_grace_feature_mapping" value="1000" min="0" max="100000" step="1">
+                          <label for="kitnet-grace-anomaly-detector" class="model-param-label">Grace AD:<button type="button" class="param-info" data-info="Grace period for Anomaly Detection: number of samples used to train the ensemble of autoencoders after feature mapping is done. Anomaly scores start after this phase.">i</button></label>
+                          <input type="number" id="kitnet-grace-anomaly-detector" name="kitnet_grace_anomaly_detector" value="1000" min="0" max="100000" step="1">
+                          <label for="kitnet-learning-rate" class="model-param-label">Learning rate:<button type="button" class="param-info" data-info="Gradient descent step size for online autoencoder updates. Lower values give more stable but slower learning; higher values adapt faster but can diverge.">i</button></label>
+                          <input type="number" id="kitnet-learning-rate" name="kitnet_learning_rate" value="0.1" min="0.001" max="1" step="0.001">
+                          <label for="kitnet-hidden-ratio" class="model-param-label">Hidden ratio:<button type="button" class="param-info" data-info="Size of the hidden layer relative to the input layer (0–1). 0.75 means the bottleneck is 75% of the input size, controlling the compression level.">i</button></label>
+                          <input type="number" id="kitnet-hidden-ratio" name="kitnet_hidden_ratio" value="0.75" min="0.01" max="1" step="0.01">
+                          <label for="kitnet-clip" class="model-param-label">Clip:<button type="button" class="param-info" data-info="Maximum value to which input features are clipped before encoding. Prevents extreme outliers from destabilising the autoencoder weights.">i</button></label>
+                          <input type="number" id="kitnet-clip" name="kitnet_clip" value="10.0" min="0.1" max="1000" step="0.1">
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                  <tr class="model-row" id="deepant-params" data-model="deepant">
+                    <td class="cell-enabled" data-label="Enabled">
+                      <label class="model-checkbox"><input type="checkbox" id="model-deepant" value="deepant" aria-label="Enable DeepAnT"></label>
+                    </td>
+                    <td class="cell-model" data-label="Model">
+                      <a class="model-dashboard-link" href="http://localhost:3000/d/source-data-deepant-influxdb/features-deepant?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" data-grafana-path="/d/source-data-deepant-influxdb/features-deepant?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" target="_blank" rel="noreferrer">DeepAnT</a>
+                      <div class="repeatability-wrapper is-hidden" hidden id="repeatability-deepant-wrapper">
+                        <label for="repeatability-deepant" class="model-param-label">Repeatability<button type="button" class="param-info" data-info="Runs two deterministic instances of the model and compares their outputs.">i</button></label>
+                        <input type="checkbox" id="repeatability-deepant" name="deepant_repeatability">
+                      </div>
+                      <div class="reproducibility-wrapper is-hidden" hidden id="reproducibility-deepant-wrapper">
+                        <label for="reproducibility-deepant" class="model-param-label">Reproducibility<button type="button" class="param-info" data-info="Tags this campaign for cross-machine reproducibility: the same model, data and parameters, run on another machine.">i</button></label>
+                        <input type="checkbox" id="reproducibility-deepant" name="deepant_reproducibility">
+                      </div>
+                    </td>
+                    <td class="cell-estimator" data-label="Anomaly estimator">
+                      <select id="deepant-estimator" name="deepant_estimator" aria-label="DeepAnT anomaly estimator">
+                        <option value="p99">P99 sliding window</option>
+                        <option value="welford">Welford (K×σ)</option>
+                        <option value="welford-windowed" selected>Welford windowed (K×σ)</option>
+                      </select>
+                    </td>
+                    <td class="cell-estimator-params" data-label="Estimator parameters">
+                      <details class="model-params-panel">
+                        <summary class="model-param-label" aria-label="DeepAnT estimator parameters">Parameters</summary>
+                        <div class="model-params-panel-body">
+                          <div class="param-field" id="deepant-p99-params">
+                            <label for="deepant-window" class="model-param-label">P99 window:</label>
+                            <input type="number" id="deepant-window" name="deepant_threshold_window" value="500" min="50" max="50000" step="50">
+                            <label for="deepant-percentile" class="model-param-label">Percentile:</label>
+                            <input type="number" id="deepant-percentile" name="deepant_threshold_percentile" value="99.0" min="50" max="99.99" step="any">
+                            <span class="model-param-hint">recent L2 scores used to calibrate DeepAnT threshold</span>
+                          </div>
+                          <div class="param-field is-hidden" id="deepant-welford-params">
+                            <label for="deepant-k-sigma" class="model-param-label">K Sigma:</label>
+                            <input type="number" id="deepant-k-sigma" name="deepant_anomaly_k_sigma" value="3.0" min="0.1" max="20" step="0.1">
+                            <label for="deepant-warmup-window" class="model-param-label">Warmup window:</label>
+                            <input type="number" id="deepant-warmup-window" name="deepant_anomaly_warmup_window" value="100" min="2" max="50000" step="1">
+                            <div class="param-field is-hidden" id="deepant-welford-window-params">
+                              <label for="deepant-welford-window" class="model-param-label">Welford window:</label>
+                              <input type="number" id="deepant-welford-window" name="deepant_welford_window" value="2048" min="1" max="200000" step="1">
+                              <span class="model-param-hint">sliding K×σ baseline window (default 2048 = DeepAnT rolling window)</span>
+                            </div>
+                            <span class="model-param-hint">threshold = mean + k_sigma × std</span>
+                          </div>
+                        </div>
+                      </details>
+                    </td>
+                    <td class="cell-core-params" data-label="Core parameters">
+                      <details class="model-core-params">
+                        <summary class="model-param-label" aria-label="DeepAnT core parameters">Core parameters</summary>
+                        <div class="model-core-params-grid">
+                          <label for="deepant-lookback-size" class="model-param-label">Lookback:<button type="button" class="param-info" data-info="Length of the past window fed to the CNN predictor (samples). Must be at least 8 for the two Conv1D + MaxPool chain.">i</button></label>
+                          <input type="number" id="deepant-lookback-size" name="deepant_lookback_size" value="100" min="8" max="5000" step="1">
+                          <label for="deepant-initial-window-size" class="model-param-label">Initial window:<button type="button" class="param-info" data-info="Number of (window, target) pairs used to train the model before the first verdict. Together with Lookback, this drives the warmup duration.">i</button></label>
+                          <input type="number" id="deepant-initial-window-size" name="deepant_initial_window_size" value="512" min="8" max="100000" step="1">
+                          <label for="deepant-refit-every" class="model-param-label">Refit every:<button type="button" class="param-info" data-info="Number of scored samples between consecutive refits. Lower values adapt faster but cost more CPU.">i</button></label>
+                          <input type="number" id="deepant-refit-every" name="deepant_refit_every" value="128" min="1" max="10000" step="1">
+                          <label for="deepant-window-size" class="model-param-label">Window size:<button type="button" class="param-info" data-info="Size of the rolling history used to rebuild Min-Max normalization stats and refit the CNN.">i</button></label>
+                          <input type="number" id="deepant-window-size" name="deepant_window_size" value="2048" min="64" max="100000" step="64">
+                          <label for="deepant-filters" class="model-param-label">Filters:<button type="button" class="param-info" data-info="Number of convolutional filters per Conv1D layer. 32 matches the original DeepAnT paper.">i</button></label>
+                          <input type="number" id="deepant-filters" name="deepant_filters" value="32" min="1" max="512" step="1">
+                          <label for="deepant-kernel-size" class="model-param-label">Kernel:<button type="button" class="param-info" data-info="Conv1D kernel size. 2 captures pairwise temporal context as in the original paper.">i</button></label>
+                          <input type="number" id="deepant-kernel-size" name="deepant_kernel_size" value="2" min="1" max="16" step="1">
+                          <label for="deepant-dropout" class="model-param-label">Dropout:<button type="button" class="param-info" data-info="Dropout rate applied to the dense layer. Higher values regularise more aggressively.">i</button></label>
+                          <input type="number" id="deepant-dropout" name="deepant_dropout" value="0.25" min="0" max="0.95" step="0.05">
+                          <label for="deepant-lr" class="model-param-label">LR:<button type="button" class="param-info" data-info="Adam learning rate.">i</button></label>
+                          <input type="number" id="deepant-lr" name="deepant_lr" value="0.001" min="0.00001" max="1" step="any">
+                          <label for="deepant-epochs-initial" class="model-param-label">Epochs init:<button type="button" class="param-info" data-info="Number of training epochs during the initial warmup.">i</button></label>
+                          <input type="number" id="deepant-epochs-initial" name="deepant_epochs_initial" value="10" min="1" max="500" step="1">
+                          <label for="deepant-epochs-refit" class="model-param-label">Epochs refit:<button type="button" class="param-info" data-info="Number of training epochs per refit.">i</button></label>
+                          <input type="number" id="deepant-epochs-refit" name="deepant_epochs_refit" value="5" min="1" max="500" step="1">
+                          <label for="deepant-batch-size" class="model-param-label">Batch:<button type="button" class="param-info" data-info="Mini-batch size used during training.">i</button></label>
+                          <input type="number" id="deepant-batch-size" name="deepant_batch_size" value="32" min="1" max="1024" step="1">
+                          <label for="deepant-max-group-workers" class="model-param-label">Max workers:<button type="button" class="param-info" data-info="Size of the bounded pool of parallel DeepAnT worker processes. Groups are spread across the pool by a stable hash (a worker may handle several groups), so any number of groups is supported — this value only caps CPU parallelism. Only used when parallel-by-group mode is enabled.">i</button></label>
+                          <input type="number" id="deepant-max-group-workers" name="deepant_max_group_workers" value="2" min="1" max="256" step="1">
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                  <tr class="model-row" id="mdragpoint-params" data-model="mdragpoint">
+                    <td class="cell-enabled" data-label="Enabled">
+                      <label class="model-checkbox"><input type="checkbox" id="model-mdragpoint" value="mdragpoint" aria-label="Enable mDragStream Point-based"></label>
+                    </td>
+                    <td class="cell-model" data-label="Model">
+                      <a class="model-dashboard-link" href="http://localhost:3000/d/source-data-mdragpoint-influxdb/features-mdragpoint?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" data-grafana-path="/d/source-data-mdragpoint-influxdb/features-mdragpoint?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&var-feature=ALL&refresh=10s" target="_blank" rel="noreferrer">mDragStream Point-based</a>
+                      <div class="repeatability-wrapper is-hidden" hidden id="repeatability-mdragpoint-wrapper">
+                        <label for="repeatability-mdragpoint" class="model-param-label">Repeatability<button type="button" class="param-info" data-info="Runs two deterministic instances of the model and compares their outputs.">i</button></label>
+                        <input type="checkbox" id="repeatability-mdragpoint" name="mdragpoint_repeatability">
+                      </div>
+                      <div class="reproducibility-wrapper is-hidden" hidden id="reproducibility-mdragpoint-wrapper">
+                        <label for="reproducibility-mdragpoint" class="model-param-label">Reproducibility<button type="button" class="param-info" data-info="Tags this campaign for cross-machine reproducibility: the same model, data and parameters, run on another machine.">i</button></label>
+                        <input type="checkbox" id="reproducibility-mdragpoint" name="mdragpoint_reproducibility">
+                      </div>
+                    </td>
+                    <td class="cell-estimator" data-label="Anomaly estimator">
+                      <select id="mdragpoint-estimator-unified" name="mdragpoint_estimator_unified" aria-label="mDragStream Point-based anomaly estimator">
+                        <option value="native" selected>Native</option>
+                        <option value="p99">P99 sliding window</option>
+                        <option value="welford">Welford (K×σ)</option>
+                        <option value="welford-windowed">Welford windowed (K×σ)</option>
+                      </select>
+                      <div class="sync-hidden-controls" hidden>
+                        <select id="mdragpoint-verdict-mode" name="mdragpoint_verdict_mode" tabindex="-1" aria-hidden="true">
+                          <option value="internal" selected>Native mDragStream internal threshold</option>
+                          <option value="external">External P99/Welford threshold</option>
+                        </select>
+                        <select id="mdragpoint-estimator" name="mdragpoint_estimator" tabindex="-1" aria-hidden="true">
+                          <option value="p99" selected>P99 sliding window</option>
+                          <option value="welford">Welford (K×σ)</option>
+                          <option value="welford-windowed">Welford windowed (K×σ)</option>
+                        </select>
+                      </div>
+                    </td>
+                    <td class="cell-estimator-params" data-label="Estimator parameters">
+                      <details class="model-params-panel" id="mdragpoint-estimator-panel">
+                        <summary class="model-param-label" aria-label="mDragStream estimator parameters">Parameters</summary>
+                        <div class="model-params-panel-body">
+                          <div class="param-field" id="mdragpoint-external-params">
+                            <div id="mdragpoint-p99-params">
+                              <label for="mdragpoint-window" class="model-param-label">P99 window:</label>
+                              <input type="number" id="mdragpoint-window" name="mdragpoint_threshold_window" value="500" min="50" max="50000" step="50">
+                              <label for="mdragpoint-percentile" class="model-param-label">Percentile:</label>
+                              <input type="number" id="mdragpoint-percentile" name="mdragpoint_threshold_percentile" value="99.0" min="50" max="99.99" step="any">
+                              <span class="model-param-hint">external threshold calibration, used when mDragStream Point-based runs in external verdict mode</span>
+                            </div>
+                            <div class="param-field is-hidden" id="mdragpoint-welford-params">
+                              <label for="mdragpoint-k-sigma" class="model-param-label">K Sigma:</label>
+                              <input type="number" id="mdragpoint-k-sigma" name="mdragpoint_anomaly_k_sigma" value="3.0" min="0.1" max="20" step="0.1">
+                              <label for="mdragpoint-warmup-window" class="model-param-label">Warmup window:</label>
+                              <input type="number" id="mdragpoint-warmup-window" name="mdragpoint_anomaly_warmup_window" value="100" min="2" max="50000" step="1">
+                              <div class="param-field is-hidden" id="mdragpoint-welford-window-params">
+                                <label for="mdragpoint-welford-window" class="model-param-label">Welford window:</label>
+                                <input type="number" id="mdragpoint-welford-window" name="mdragpoint_welford_window" value="900" min="1" max="200000" step="1">
+                                <span class="model-param-hint">sliding K×σ baseline window (default 900 = cluster memory: max clusters × max cluster size)</span>
+                              </div>
+                              <span class="model-param-hint">external threshold = mean + k_sigma × std</span>
+                            </div>
+                          </div>
+                        </div>
+                      </details>
+                      <span class="param-empty" id="mdragpoint-params-empty">—</span>
+                    </td>
+                    <td class="cell-core-params" data-label="Core parameters">
+                      <details class="model-core-params">
+                        <summary class="model-param-label" aria-label="mDragStream core parameters">Core parameters</summary>
+                        <div class="model-core-params-grid">
+                          <label for="mdragpoint-dynamic-threshold" class="model-param-label">Dynamic threshold:<button type="button" class="param-info" data-info="Enable the historical mDragStream Point dynamic internal threshold update instead of keeping the initial radius fixed.">i</button></label>
+                          <input type="checkbox" id="mdragpoint-dynamic-threshold" name="mdragpoint_dynamic_threshold" checked>
+                          <label for="mdragpoint-lof-init" class="model-param-label">LOF init:<button type="button" class="param-info" data-info="Filter the initial reference set with Local Outlier Factor before building the mDragStream Point baseline.">i</button></label>
+                          <input type="checkbox" id="mdragpoint-lof-init" name="mdragpoint_lof_init" checked>
+                          <label for="mdragpoint-n-init" class="model-param-label">N init:<button type="button" class="param-info" data-info="Number of initial samples buffered before mDragStream Point starts producing verdicts.">i</button></label>
+                          <input type="number" id="mdragpoint-n-init" name="mdragpoint_n_init" value="1000" min="2" max="100000" step="1">
+                          <label for="mdragpoint-max-nb-clusters" class="model-param-label">Clusters:<button type="button" class="param-info" data-info="Maximum number of clusters maintained by the Point-based baseline.">i</button></label>
+                          <input type="number" id="mdragpoint-max-nb-clusters" name="mdragpoint_max_nb_clusters" value="50" min="1" max="10000" step="1">
+                          <label for="mdragpoint-max-cluster-size" class="model-param-label">Cluster size:<button type="button" class="param-info" data-info="Maximum number of samples retained per cluster. Larger values keep more local context and cost more memory.">i</button></label>
+                          <input type="number" id="mdragpoint-max-cluster-size" name="mdragpoint_max_cluster_size" value="30" min="1" max="10000" step="1">
+                          <label for="mdragpoint-lof-neighbors" class="model-param-label">LOF neighbors:<button type="button" class="param-info" data-info="Number of neighbors used by LOF during initial baseline filtering when LOF init is enabled.">i</button></label>
+                          <input type="number" id="mdragpoint-lof-neighbors" name="mdragpoint_lof_neighbors" value="20" min="1" max="10000" step="1">
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <table class="models-table models-table-explainability" aria-label="Explainability services">
+                <colgroup>
+                  <col class="col-enabled">
+                  <col class="col-expl-service">
+                  <col class="col-expl-model">
+                  <col class="col-expl-mode">
+                  <col class="col-expl-method">
+                  <col class="col-expl-params">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Enabled</th>
+                    <th scope="col">Service</th>
+                    <th scope="col">Model to explain</th>
+                    <th scope="col">Mode</th>
+                    <th scope="col">Method</th>
+                    <th scope="col">Parameters</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="model-row" id="explainability-row" data-model="explainability">
+                    <td class="cell-enabled" data-label="Enabled">
+                      <label class="model-checkbox" id="model-explainability-wrapper"><input type="checkbox" id="model-explainability" value="explainability" aria-label="Enable Explainability"></label>
+                    </td>
+                    <td class="cell-model" data-label="Service">
+                      <a id="explainability-dashboard-link" class="model-dashboard-link" href="http://localhost:3000/d/explainability-influxdb/explainability?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&refresh=10s" data-grafana-path="/d/explainability-influxdb/explainability?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&refresh=10s" target="_blank" rel="noreferrer">Explainability</a>
+                    </td>
+                    <td class="cell-expl-model" data-label="Model to explain">
+                      <label class="model-explain-field has-compute-warning" for="explainability-model">
+                        <select id="explainability-model" aria-describedby="explainability-compute-warning" name="explainability_model" aria-label="Explainability model to explain"><option value="">Choose…</option><option value="hstree">HSTree</option><option value="iforest">IForest</option><option value="kitnet" title="KitNET with KernelSHAP has very high compute cost.">KitNET</option></select>
+                        <span id="explainability-compute-warning" class="explainability-compute-warning" hidden>Very high compute cost</span>
+                      </label>
+                    </td>
+                    <td class="cell-expl-mode" data-label="Mode">
+                      <label class="model-mode-field" for="explainability-mode">
+                        <select id="explainability-mode" name="explainability_mode" aria-label="Explainability mode"><option value="" selected>Choose…</option><option value="simple">Independent</option><option value="reference">Check against detector</option></select>
+                      </label>
+                    </td>
+                    <td class="cell-expl-mode" data-label="Method">
+                      <select id="explainability-method" name="explainability_method" aria-label="Explainability method" title="iForest TreeExplainer: exact Shapley values on mean path length, not the anomaly-score scale. Negative contribution increases isolation."><option value="kernel">KernelSHAP</option><option value="tree">TreeExplainer (iForest path length)</option></select>
+                    </td>
+                    <td class="cell-expl-params" data-label="Parameters">
+                      <details class="model-params-panel" id="explainability-parameters-panel">
+                        <summary class="model-param-label" aria-label="Explainability parameters">Parameters</summary>
+                        <div class="model-params-panel-body">
+                          <div class="param-field">
+                            <label for="explainability-nsamples" class="model-param-label">SHAP samples:</label>
+                            <select id="explainability-nsamples" class="explainability-samples-select" name="explainability_nsamples">
+                              <option value="100" selected>100 live</option>
+                              <option value="1000">1000 lower noise</option>
+                              <option value="1500">1500 validation</option>
+                              <option value="2000">2000 high stability</option>
+                            </select>
+                          </div>
+                        </div>
+                      </details>
+                      <span class="param-empty is-hidden" id="explainability-parameters-empty" title="TreeExplainer has no configurable parameters in this UI.">—</span>
+                    </td>
+                  </tr>
+                  <tr class="explainability-error-row" id="explainability-error-row" hidden>
+                    <td colspan="6">
+                      <p id="explainability-mode-error" class="field-help explainability-error" role="alert" aria-live="polite"></p>
+                    </td>
+                  </tr>
+                  <tr class="model-row" id="explainability-v2-row" data-model="explainability-v2">
+                    <td class="cell-enabled" data-label="Enabled">
+                      <label class="model-checkbox" id="model-explainability-v2-wrapper"><input type="checkbox" id="model-explainability-v2" value="explainability-v2" aria-label="Enable Explainability v2"></label>
+                    </td>
+                    <td class="cell-model" data-label="Service">
+                      <a id="explainability-v2-dashboard-link" class="model-dashboard-link" href="http://localhost:3000/d/explainability-v2-influxdb/explainability-v2?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&refresh=10s" data-grafana-path="/d/explainability-v2-influxdb/explainability-v2?orgId=1&from=now-30m&to=now&timezone=browser&var-group=ALL&refresh=10s" target="_blank" rel="noreferrer">Explainability v2</a>
+                    </td>
+                    <td class="cell-expl-model" data-label="Model to explain">
+                      <label class="model-explain-field has-compute-warning" for="explainability-v2-model">
+                        <select id="explainability-v2-model" aria-describedby="explainability-v2-compute-warning" name="explainability_v2_model" aria-label="Explainability v2 model to explain"><option value="">Choose…</option><option value="hstree">HSTree</option><option value="iforest">IForest</option><option value="kitnet" title="KitNET with KernelSHAP has very high compute cost.">KitNET</option></select>
+                        <span id="explainability-v2-compute-warning" class="explainability-compute-warning" hidden>Very high compute cost</span>
+                      </label>
+                    </td>
+                    <td class="cell-expl-mode" data-label="Mode">
+                      <label class="model-mode-field" for="explainability-v2-mode">
+                        <select id="explainability-v2-mode" name="explainability_v2_mode" aria-label="Explainability v2 mode"><option value="" selected>Choose…</option><option value="simple">Independent</option><option value="reference">Check against detector</option></select>
+                      </label>
+                    </td>
+                    <td class="cell-expl-mode" data-label="Method">
+                      <select id="explainability-v2-method" name="explainability_v2_method" aria-label="Explainability v2 method" title="iForest TreeExplainer: exact Shapley values on mean path length, not the anomaly-score scale. Negative contribution increases isolation."><option value="kernel">KernelSHAP</option><option value="tree">TreeExplainer (iForest path length)</option></select>
+                    </td>
+                    <td class="cell-expl-params" data-label="Parameters">
+                      <details class="model-params-panel" id="explainability-v2-parameters-panel">
+                        <summary class="model-param-label" aria-label="Explainability v2 parameters">Parameters</summary>
+                        <div class="model-params-panel-body">
+                          <div class="param-field">
+                            <label for="explainability-v2-nsamples" class="model-param-label">SHAP samples:</label>
+                            <select id="explainability-v2-nsamples" class="explainability-samples-select" name="explainability_v2_nsamples">
+                              <option value="100" selected>100 live</option>
+                              <option value="1000">1000 lower noise</option>
+                              <option value="1500">1500 validation</option>
+                              <option value="2000">2000 high stability</option>
+                            </select>
+                          </div>
+                        </div>
+                      </details>
+                      <span class="param-empty is-hidden" id="explainability-v2-parameters-empty" title="TreeExplainer has no configurable parameters in this UI.">—</span>
+                    </td>
+                  </tr>
+                  <tr class="explainability-error-row" id="explainability-v2-error-row" hidden>
+                    <td colspan="6">
+                      <p id="explainability-v2-mode-error" class="field-help explainability-error" role="alert" aria-live="polite"></p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="field-help">Independent calculates a local model score without an upstream detector. Check against detector compares that score with the selected detector's score before computing SHAP.</p>
+
+            <label for="fields"><span class="step-number">4.</span> <strong>Excluded fields</strong></label>
+            <input id="fields" name="excluded_fields" type="text" placeholder="e.g. timestamp,id">
+            <p class="field-help" id="fields-help">Comma-separated list.</p>
+
+            <div id="dataset-preview-block" class="dataset-preview is-hidden">
+              <h3>Data cleaning preview</h3>
+              <p class="field-help" id="dataset-preview-status">First CSV row values.</p>
+              <div id="dataset-preview-layout" class="dataset-preview-layout no-slider">
+                <div id="dataset-preview-window" class="dataset-preview-window">
+                  <table id="dataset-preview-table" class="dataset-preview-table" aria-label="dataset sample preview">
+                    <thead>
+                      <tr id="dataset-preview-header"></tr>
+                    </thead>
+                    <tbody id="dataset-preview-body">
+                      <tr><td>-</td></tr>
+                    </tbody>
+                  </table>
+                  <div id="dataset-preview-cards" class="dataset-preview-cards is-hidden"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="submit" id="launch-button">Start analysis</button>
+              <a class="secondary" id="grafana-link" href="http://localhost:3000" target="_blank" rel="noreferrer">Open Grafana</a>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="secondary" id="stop-reset-button">Stop and reset for new campaign</button>
+            </div>
+
+            <div id="explainability-v2-progress" class="explainability-v2-progress is-hidden" data-v2-state="idle">
+              <div class="progress-item-head">
+                <strong>Explainability v2</strong>
+                <span id="explainability-v2-state" class="badge v2-state-unknown">Unknown</span>
+              </div>
+              <div class="progress-item-meta">
+                <span id="explainability-v2-lag">Consumer lag: -</span>
+                <span id="explainability-v2-records">Published: -</span>
+              </div>
+              <p id="explainability-v2-reason" class="explainability-v2-reason">-</p>
+              <p class="explainability-v2-note">Complete is confirmed only after v2 delivery and commit.</p>
+            </div>
+            <div id="explainability-v1-progress" class="explainability-v2-progress is-hidden" data-v1-state="idle">
+              <div class="progress-item-head">
+                <strong>Explainability</strong>
+                <span id="explainability-v1-state" class="badge v2-state-unknown">Unknown</span>
+              </div>
+              <div class="progress-item-meta">
+                <span id="explainability-v1-lag">Consumer lag: -</span>
+                <span id="explainability-v1-records">Published: -</span>
+              </div>
+              <p id="explainability-v1-reason" class="explainability-v2-reason">-</p>
+              <p class="explainability-v2-note">Complete is confirmed only after V1 delivery and commit (at least once).</p>
+            </div>
+            <p id="explainability-v2-forced-warning" class="explainability-v2-forced-warning is-hidden">
+              Warning: this action was forced while explainability-v2 was incomplete.
+              The campaign is not complete and may be missing v2 results.
+            </p>
+
+            <div class="platform-state">
+              <span>Platform state</span>
+              <strong id="platform-state">Waiting for launch</strong>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app-user.js?v=20261013-5"></script>
+  </body>
+</html>

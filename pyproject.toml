@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dasma-kafka"
+version = "0.1.0"
+description = "DASMA Kafka prototype for ingestion, anomaly detection, and observability."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+  "attrs",
+  "authlib",
+  "cachetools",
+  "certifi",
+  "confluent-kafka",
+  "fastavro",
+  "httpx",
+  "numpy",
+  "pandas",
+  "pysad",
+]
+
+[project.optional-dependencies]
+iforest = [
+  "pyod",
+]
+deepant = [
+  "torch==2.6.0",
+]
+mdragpoint = [
+  "scikit-learn",
+]
+explainability = [
+  "scikit-learn",
+  "shap==0.51.0",
+]
+web = [
+  "fastapi",
+  "uvicorn",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

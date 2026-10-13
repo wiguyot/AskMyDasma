@@ -1,0 +1,1131 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisWidth": 60
+          },
+          "displayName": "${__field.name} group=\"${__field.labels.Group}\"",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hstree_score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "HSTree score group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hstree_threshold"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "HSTree threshold group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hstree_anomaly_marker"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Anomaly score marker group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 8
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "groupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nbase =\n  from(bucket: \"hstree-analysis\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"hstree-analysis\")\n    |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n\nscore =\n  base\n    |> filter(fn: (r) => r._field == \"hstree_score\")\n    |> drop(columns: [\"host\", \"_measurement\", \"hstree_status\"])\n    |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nthreshold =\n  base\n    |> filter(fn: (r) => r._field == \"hstree_threshold\")\n    |> drop(columns: [\"host\", \"_measurement\", \"hstree_status\"])\n    |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n\nanomalies =\n  base\n    |> filter(fn: (r) => r._field == \"hstree_score\" and r.hstree_status == \"anomaly\")\n    |> drop(columns: [\"host\", \"_measurement\", \"hstree_status\"])\n    |> map(fn: (r) => ({ r with _field: \"hstree_anomaly_marker\", _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nunion(tables: [score, threshold, anomalies])\n  |> yield(name: \"hstree_analysis\")",
+          "refId": "A"
+        }
+      ],
+      "title": "HSTree Analysis",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisWidth": 60
+          },
+          "displayName": "${__field.name} group=\"${__field.labels.Group}\"",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "iforest_score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "IForest score group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "iforest_threshold"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "IForest threshold group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "iforest_anomaly_marker"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Anomaly score marker group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 8
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "groupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nbase =\n  from(bucket: \"iforest-analysis\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"iforest-analysis\")\n    |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n\nscore =\n  base\n    |> filter(fn: (r) => r._field == \"iforest_score\")\n    |> drop(columns: [\"host\", \"_measurement\", \"iforest_status\"])\n    |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nthreshold =\n  base\n    |> filter(fn: (r) => r._field == \"iforest_threshold\")\n    |> drop(columns: [\"host\", \"_measurement\", \"iforest_status\"])\n    |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n\nanomalies =\n  base\n    |> filter(fn: (r) => r._field == \"iforest_score\" and r.iforest_status == \"anomaly\")\n    |> drop(columns: [\"host\", \"_measurement\", \"iforest_status\"])\n    |> map(fn: (r) => ({ r with _field: \"iforest_anomaly_marker\", _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nunion(tables: [score, threshold, anomalies])\n  |> yield(name: \"iforest_analysis\")",
+          "refId": "A"
+        }
+      ],
+      "title": "IForest Analysis",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "log",
+              "log": 10
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisWidth": 60
+          },
+          "displayName": "${__field.name} group=\"${__field.labels.Group}\"",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kitnet_score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "KitNET score capped at 5 group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kitnet_threshold"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "KitNET threshold capped at 5 group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kitnet_anomaly_marker"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Anomaly score marker capped at 5 group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 8
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "groupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nbase =\n  from(bucket: \"kitnet-analysis\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"kitnet-analysis\")\n    |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n\nscore =\n  base\n    |> filter(fn: (r) => r._field == \"kitnet_score\")\n    |> drop(columns: [\"host\", \"_measurement\", \"kitnet_status\"])\n    |> map(fn: (r) => ({ r with _value: if float(v: r._value) > 5.0 then 5.0 else float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nthreshold =\n  base\n    |> filter(fn: (r) => r._field == \"kitnet_threshold\")\n    |> drop(columns: [\"host\", \"_measurement\", \"kitnet_status\"])\n    |> map(fn: (r) => ({ r with _value: if float(v: r._value) > 5.0 then 5.0 else float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n\nanomalies =\n  base\n    |> filter(fn: (r) => r._field == \"kitnet_score\" and r.kitnet_status == \"anomaly\")\n    |> drop(columns: [\"host\", \"_measurement\", \"kitnet_status\"])\n    |> map(fn: (r) => ({ r with _field: \"kitnet_anomaly_marker\", _value: if float(v: r._value) > 5.0 then 5.0 else float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nunion(tables: [score, threshold, anomalies])\n  |> yield(name: \"kitnet_analysis\")",
+          "refId": "A"
+        }
+      ],
+      "title": "KitNET Analysis",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisWidth": 60
+          },
+          "displayName": "${__field.name} group=\"${__field.labels.Group}\"",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "DeepAnT score group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_threshold"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "DeepAnT threshold group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deepant_anomaly_marker"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Anomaly score marker group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 8
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "groupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nbase =\n  from(bucket: \"deepant-analysis\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"deepant-analysis\")\n    |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n\nscore =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_score\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nthreshold =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_threshold\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n\nanomalies =\n  base\n    |> filter(fn: (r) => r._field == \"deepant_score\" and r.deepant_status == \"anomaly\")\n    |> drop(columns: [\"host\", \"_measurement\", \"deepant_status\"])\n    |> map(fn: (r) => ({ r with _field: \"deepant_anomaly_marker\", _value: float(v: r._value) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nunion(tables: [score, threshold, anomalies])\n  |> yield(name: \"deepant_analysis\")",
+          "refId": "A"
+        }
+      ],
+      "title": "DeepAnT Analysis",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisWidth": 60
+          },
+          "displayName": "${__field.name} group=\"${__field.labels.Group}\"",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mdragpoint_score_log10"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "mDragStream Point-based log10(score + 1) group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mdragpoint_anomaly_marker_log10"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "mDragStream Point-based native anomaly log10(score + 1) group=\"${__field.labels.Group}\""
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 8
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "import \"math\"\n\ngroupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\nbase =\n  from(bucket: \"mdragstream-point-analysis\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"mdragstream-point-analysis\")\n    |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n\nscore =\n  base\n    |> filter(fn: (r) => r._field == \"mdragpoint_score\")\n    |> drop(columns: [\"host\", \"_measurement\", \"mdragpoint_status\"])\n    |> map(fn: (r) => ({ r with _field: \"mdragpoint_score_log10\", _value: math.log10(x: float(v: r._value) + 1.0) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nanomalies =\n  base\n    |> filter(fn: (r) => r._field == \"mdragpoint_score\" and r.mdragpoint_status == \"anomaly\")\n    |> drop(columns: [\"host\", \"_measurement\", \"mdragpoint_status\"])\n    |> map(fn: (r) => ({ r with _field: \"mdragpoint_anomaly_marker_log10\", _value: math.log10(x: float(v: r._value) + 1.0) }))\n    |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n\nunion(tables: [score, anomalies])\n  |> yield(name: \"mdragpoint_analysis\")",
+          "refId": "A"
+        }
+      ],
+      "title": "mDragStream Point-based Analysis",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "series"
+            },
+            "axisWidth": 60
+          },
+          "displayName": "Max consensus strength group=\"${__field.labels.Group}\"",
+          "mappings": [],
+          "max": 5,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "groupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\n// Consensus strength: maximum number of anomalous model votes observed on the\n// same source_event_id inside the display window. This is not a volume counter.\n// When Group=ALL, keep one series per Group; no implicit global aggregation.\n\nfrom(bucket: \"consensus-analysis\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"consensus-analysis\")\n  |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n  |> filter(fn: (r) => r._field == \"anomaly_count\")\n  |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n  |> group(columns: [\"Group\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n  |> yield(name: \"strength\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Consensus Strength (max models/event)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisWidth": 60
+          },
+          "mappings": [],
+          "max": 5,
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "groupSel = if \"${group}\" == \"\" then \"ALL\" else \"${group}\"\n\n// Per-model consensus volume: one unit per model that raised at least one\n// anomaly vote inside the display window. This is a model-presence view, not an\n// event counter; repeated source_event_id values do not increase one model's bar.\n// When Group=ALL, sum the already windowed per-group flags directly by\n// _time/_field instead of running a second aggregateWindow.\n\nfrom(bucket: \"consensus-analysis\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"consensus-analysis\")\n  |> filter(fn: (r) => groupSel == \"ALL\" or r.Group == groupSel)\n  |> filter(fn: (r) => r._field =~ /^(hstree|iforest|kitnet|deepant|mdragpoint)_vote$/)\n  |> keep(columns: [\"_time\", \"_field\", \"_value\", \"Group\"])\n  |> map(fn: (r) => ({ r with _value: float(v: r._value) }))\n  |> group(columns: [\"Group\", \"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n  |> group(columns: [\"_time\", \"_field\"])\n  |> sum(column: \"_value\")\n  |> group(columns: [\"_field\"])\n  |> yield(name: \"by_model\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Consensus by Model (1/model/window)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "influxdb",
+    "observability",
+    "anomaly"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"source-data\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"source-data\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Group",
+        "multi": false,
+        "name": "group",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\ngroups =\n  schema.tagValues(\n    bucket: \"source-data\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"source-data\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, groups])\n  |> group()",
+        "refresh": 1,
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Anomaly Analysis Overview",
+  "uid": "anomaly-analysis-overview-influxdb",
+  "version": 3,
+  "weekStart": ""
+}

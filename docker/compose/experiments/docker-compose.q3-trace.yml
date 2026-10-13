@@ -1,0 +1,12 @@
+# Optional Q3 side-channel mount. This override is added only with --q3-trace;
+# ordinary V1/V2 parity campaigns retain their original mounts.
+services:
+  v1v2-hstree:
+    volumes:
+      - ${V1V2_Q3_TRACE_HOST_DIR}:/q3-traces
+  v1v2-regular:
+    volumes:
+      - ${V1V2_Q3_TRACE_HOST_DIR}:/q3-traces
+  v1v2-v2:
+    volumes:
+      - ${V1V2_Q3_TRACE_HOST_DIR}:/q3-traces

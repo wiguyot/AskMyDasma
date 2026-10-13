@@ -1,0 +1,119 @@
+# OC-14 dedicated capacity campaign services (non-destructive override).
+#
+# For EACH budget the runner starts a fresh isolated campaign: every resource
+# carries the OC14_RUN_ID (fresh UUID per campaign) AND the budget suffix
+# (OC14_NSAMPLES): topics, consumer groups, Avro subjects (TopicNameStrategy
+# derives the subject from the dedicated topic names). Created resources are
+# NEVER deleted: they stay available for audit.
+#
+# The standard compose resources are never touched; the runner refuses to
+# start when the standard compute services are running. No Telegraf, Grafana
+# or InfluxDB here: OC-14 measures the Kafka pipeline and exports.
+
+services:
+  oc14-producer:
+    image: dasma-kafka-producer:0.1.0
+    container_name: oc14-producer-${OC14_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      TOPIC_NAME: "oc14-ns${OC14_NSAMPLES}-source-${OC14_RUN_ID}"
+      DATA_SOURCE_FILE: "tests/fixtures/explainability_v2/oc14_capacity_source.csv"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TIME_DELAY: "0.05"
+      PIP_CACHE_DIR: "/pip-cache"
+      DASMA_PRODUCER_TRANSFORMATION: ""
+      DASMA_SELECTED_GROUPS: ""
+      DASMA_EXCLUDED_FIELDS: ""
+      DASMA_PRODUCER_WAIT_FOR_START: "0"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    restart: "no"
+
+  oc14-hstree:
+    image: dasma-kafka-anomaly-light:0.1.0
+    container_name: oc14-hstree-${OC14_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "oc14-ns${OC14_NSAMPLES}-source-${OC14_RUN_ID}"
+      KAFKA_DEST_TOPIC: "oc14-ns${OC14_NSAMPLES}-hstree-${OC14_RUN_ID}"
+      KAFKA_DEST_VIZ_TOPIC: "oc14-ns${OC14_NSAMPLES}-hstree-viz-${OC14_RUN_ID}"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      HSTREE_INITIAL_WINDOW_SIZE: "100"
+      HSTREE_WINDOW_SIZE: "2048"
+      HSTREE_NUM_TREES: "50"
+      HSTREE_MAX_DEPTH: "15"
+      HSTREE_EXCLUDE_FIELDS: "source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber"
+      HSTREE_ANOMALY_K_SIGMA: "3.0"
+      HSTREE_ANOMALY_MIN_SAMPLES: "2"
+      HSTREE_THRESHOLD_MODE: "welford-windowed"
+      ANALYSE_HSTREE_GROUP_ID: "oc14-ns${OC14_NSAMPLES}-hstree-consumer-${OC14_RUN_ID}"
+      ANALYSE_SEED: "42"
+      DASMA_ENABLED: "1"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/detectors/hstree/hstree_analysis.py"]
+    restart: "no"
+
+  oc14-v2:
+    image: dasma-kafka-explainability:0.1.0
+    container_name: oc14-v2-${OC14_RUN_ID}
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "oc14-ns${OC14_NSAMPLES}-hstree-${OC14_RUN_ID}"
+      EXPLAINABILITY_MODEL: "hstree"
+      EXPLAINABILITY_MODE: "reference"
+      EXPLAINABILITY_METHOD: "kernel"
+      KAFKA_DEST_TOPIC: "oc14-ns${OC14_NSAMPLES}-v2-${OC14_RUN_ID}"
+      KAFKA_DEST_TOPIC_JSON: "oc14-ns${OC14_NSAMPLES}-v2-viz-${OC14_RUN_ID}"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      EXPLAINABILITY_GROUP_ID: "oc14-ns${OC14_NSAMPLES}-v2-consumer-${OC14_RUN_ID}"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      HSTREE_INITIAL_WINDOW_SIZE: "100"
+      HSTREE_WINDOW_SIZE: "2048"
+      HSTREE_NUM_TREES: "50"
+      HSTREE_MAX_DEPTH: "15"
+      HSTREE_EXCLUDE_FIELDS: "source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber"
+      SHAP_BACKGROUND_SIZE: "100"
+      SHAP_NSAMPLES: "${OC14_NSAMPLES}"
+      SHAP_ENABLED: "true"
+      EXPLAINABILITY_SEED: "42"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      DASMA_ENABLED: "1"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/explainability/v2/explainability_v2.py"]
+    restart: "no"

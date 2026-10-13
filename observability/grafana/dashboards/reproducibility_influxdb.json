@@ -1,0 +1,461 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Comparison summary — last batch (within tolerance is never exact)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"exact\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"within_tolerance\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"divergent\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"missing_source_1\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"missing_source_2\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "E"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Scores source-1 vs source-2",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 3
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-diff\")\n  |> filter(fn: (r) => r._field == \"score_source_1\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n|> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n|> keep(columns: [\"_time\", \"_value\", \"_field\", \"Group\", \"source_event_id\"])\n|> group(columns: [\"Group\", \"_field\", \"source_event_id\"])",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-diff\")\n  |> filter(fn: (r) => r._field == \"score_source_2\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n|> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n|> keep(columns: [\"_time\", \"_value\", \"_field\", \"Group\", \"source_event_id\"])\n|> group(columns: [\"Group\", \"_field\", \"source_event_id\"])",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Score differences per event (abs_diff / relative_diff)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 3
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-diff\")\n  |> filter(fn: (r) => r._field == \"score_abs_diff\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n|> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n|> keep(columns: [\"_time\", \"_value\", \"_field\", \"Group\", \"source_event_id\"])\n|> group(columns: [\"Group\", \"_field\", \"source_event_id\"])",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-diff\")\n  |> filter(fn: (r) => r._field == \"score_relative_diff\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n|> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n|> keep(columns: [\"_time\", \"_value\", \"_field\", \"Group\", \"source_event_id\"])\n|> group(columns: [\"Group\", \"_field\", \"source_event_id\"])",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Timestamp offset (execution diagnostic — not a model divergence)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "description": "Diagnostic of the execution times only (source-2 minus source-1, in seconds). It never measures a model divergence.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 3
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-diff\")\n  |> filter(fn: (r) => r._field == \"timestamp_offset_seconds\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n|> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n|> keep(columns: [\"_time\", \"_value\", \"_field\", \"Group\", \"source_event_id\"])\n|> group(columns: [\"Group\", \"_field\", \"source_event_id\"])",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Divergences and missing events",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "description": "Latest divergent, missing_source_1 or missing_source_2 rows with their diagnostic fields.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"reproducibility-diff\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-diff\")\n  |> filter(fn: (r) => r._field == \"comparison_status\" or r._field == \"differing_fields\" or r._field == \"max_abs_diff\" or r._field == \"max_relative_diff\" or r._field == \"score_source_1\" or r._field == \"score_source_2\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n|> filter(fn: (r) => if \"${group}\" == \"ALL\" then true else r.Group == \"${group}\")\n  |> group()\n  |> pivot(rowKey: [\"_time\", \"Group\", \"source_event_id\", \"campaign_id\", \"model\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> filter(fn: (r) => r.comparison_status == \"divergent\" or r.comparison_status == \"missing_source_1\" or r.comparison_status == \"missing_source_2\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 50)\n  |> keep(columns: [\"_time\", \"Group\", \"source_event_id\", \"comparison_status\", \"differing_fields\", \"max_abs_diff\", \"max_relative_diff\", \"score_source_1\", \"score_source_2\"])"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "First diagnostic — last batch summary",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-dasma"
+      },
+      "description": "Null marker means no such row in the compared lot.",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"first_divergence_group\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"first_divergence_source_event_id\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"first_divergence_fields\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"first_missing_source_1_group\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"first_missing_source_1_source_event_id\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"first_missing_source_2_group\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "F"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-dasma"
+          },
+          "query": "from(bucket: \"reproducibility-summary\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"reproducibility-summary\")\n  |> filter(fn: (r) => r._field == \"first_missing_source_2_source_event_id\")\n|> filter(fn: (r) => if \"${campaign_id}\" == \"ALL\" then true else r.campaign_id == \"${campaign_id}\")\n|> filter(fn: (r) => if \"${model}\" == \"ALL\" then true else r.model == \"${model}\")\n  |> last()",
+          "refId": "G"
+        }
+      ]
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": [
+    "reproducibility",
+    "influxdb",
+    "observability"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nvalues =\n  schema.tagValues(\n    bucket: \"reproducibility-diff\",\n    tag: \"campaign_id\",\n    predicate: (r) => r._measurement == \"reproducibility-diff\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, values])\n  |> group()",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Campaign",
+        "multi": false,
+        "name": "campaign_id",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nvalues =\n  schema.tagValues(\n    bucket: \"reproducibility-diff\",\n    tag: \"campaign_id\",\n    predicate: (r) => r._measurement == \"reproducibility-diff\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, values])\n  |> group()",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nvalues =\n  schema.tagValues(\n    bucket: \"reproducibility-diff\",\n    tag: \"model\",\n    predicate: (r) => r._measurement == \"reproducibility-diff\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, values])\n  |> group()",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Model",
+        "multi": false,
+        "name": "model",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nvalues =\n  schema.tagValues(\n    bucket: \"reproducibility-diff\",\n    tag: \"model\",\n    predicate: (r) => r._measurement == \"reproducibility-diff\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, values])\n  |> group()",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": "ALL"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb-dasma"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nvalues =\n  schema.tagValues(\n    bucket: \"reproducibility-diff\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"reproducibility-diff\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, values])\n  |> group()",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Group",
+        "multi": false,
+        "name": "group",
+        "options": [],
+        "query": "import \"influxdata/influxdb/schema\"\nimport \"array\"\n\nall = array.from(rows: [{_value: \"ALL\"}])\n\nvalues =\n  schema.tagValues(\n    bucket: \"reproducibility-diff\",\n    tag: \"Group\",\n    predicate: (r) => r._measurement == \"reproducibility-diff\",\n    start: 2020-01-01T00:00:00Z,\n  )\n  |> keep(columns: [\"_value\"])\n\nunion(tables: [all, values])\n  |> group()",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Reproducibility",
+  "uid": "reproducibility-influxdb",
+  "version": 1,
+  "weekStart": ""
+}

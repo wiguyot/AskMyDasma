@@ -1,0 +1,10 @@
+{
+  "comparison_key": "(Group, source_event_id)",
+  "expected_keys": [
+    "G1|event-000001", "G1|event-000003", "G1|event-000005", "G1|event-000007", "G1|event-000009",
+    "G2|event-000002", "G2|event-000004", "G2|event-000006", "G2|event-000008", "G2|event-000010"
+  ],
+  "same_local_drift_keys": ["G1|event-000005"],
+  "absolute_tolerance": 1e-12,
+  "relative_tolerance": 1e-12
+}

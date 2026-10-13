@@ -1,0 +1,1391 @@
+services:
+  kafka1:
+    image: apache/kafka:3.9.2
+    container_name: kafka1
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_CLUSTER_ID=kUz30inARj2NKpW25I6K6A
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENERS=PLAINTEXT://kafka1:9092,CONTROLLER://kafka1:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka1:9092
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=false
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "cat < /dev/null > /dev/tcp/kafka1/9092"]
+      interval: 10s
+      timeout: 2s
+      retries: 30
+      start_period: 90s
+    networks: [kafka-net]
+
+  kafka2:
+    image: apache/kafka:3.9.2
+    container_name: kafka2
+    environment:
+      - KAFKA_CLUSTER_ID=kUz30inARj2NKpW25I6K6A
+      - KAFKA_NODE_ID=2
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENERS=PLAINTEXT://kafka2:9092,CONTROLLER://kafka2:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka2:9092
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=false
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "cat < /dev/null > /dev/tcp/kafka2/9092"]
+      interval: 10s
+      timeout: 2s
+      retries: 30
+      start_period: 90s
+    networks: [kafka-net]
+
+  kafka3:
+    image: apache/kafka:3.9.2
+    container_name: kafka3
+    environment:
+      - KAFKA_CLUSTER_ID=kUz30inARj2NKpW25I6K6A
+      - KAFKA_NODE_ID=3
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENERS=PLAINTEXT://kafka3:9092,CONTROLLER://kafka3:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka3:9092
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=false
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "cat < /dev/null > /dev/tcp/kafka3/9092"]
+      interval: 10s
+      timeout: 2s
+      retries: 30
+      start_period: 90s
+    networks: [kafka-net]
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: dasma-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: "http://schema-registry:8081"
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [kafka-net]
+
+  schema-registry:
+    image: ghcr.io/aiven/karapace:latest
+    container_name: schema-registry
+    entrypoint: ["/venv/bin/karapace", "/config/karapace.json"]
+    volumes:
+      - ./services/karapace/karapace.json:/config/karapace.json:ro
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/config')"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks: [kafka-net]
+
+  init-topic:
+    build:
+      context: .
+      dockerfile: services/kafka-tools/Dockerfile
+    image: dasma-kafka-kafka-tools:0.1.0
+    container_name: init-topic
+    working_dir: /app
+    volumes:
+      - ./runtime/bootstrap/init-topic:/app/runtime/bootstrap/init-topic:ro
+      - ./src:/app/src:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+
+      # Component data topic
+      TOPIC_NAME1: "source-data"
+      TOPIC_PARTITIONS1: "1"
+      TOPIC_RF1: "3"
+
+      # Analysis topic
+      TOPIC_NAME2: "hstree-analysis"
+      TOPIC_PARTITIONS2: "1"
+      TOPIC_RF2: "3"
+
+      # Explainability computation topic
+      TOPIC_NAME3: "explainability"
+      TOPIC_PARTITIONS3: "1"
+      TOPIC_RF3: "3"
+
+      # HSTree analysis visualization topic in Grafana
+      TOPIC_NAME4: "hstree-analysis-viz"
+      TOPIC_PARTITIONS4: "1"
+      TOPIC_RF4: "3"
+
+      # Dedicated metrics topic
+      TOPIC_NAME5: "topic-metrics"
+      TOPIC_PARTITIONS5: "1"
+      TOPIC_RF5: "3"
+
+      # Explainability visualization topic (JSON for Grafana/Telegraf)
+      TOPIC_NAME6: "explainability-viz"
+      TOPIC_PARTITIONS6: "1"
+      TOPIC_RF6: "3"
+
+      # IForest analysis topic
+      TOPIC_NAME7: "iforest-analysis"
+      TOPIC_PARTITIONS7: "1"
+      TOPIC_RF7: "3"
+
+      # IForest analysis visualization topic
+      TOPIC_NAME8: "iforest-analysis-viz"
+      TOPIC_PARTITIONS8: "1"
+      TOPIC_RF8: "3"
+
+      LOG_LEVEL: "INFO"
+
+      # Component visualization topic (JSON for Influx/Telegraf)
+      TOPIC_NAME9: "source-data-viz"
+      TOPIC_PARTITIONS9: "1"
+      TOPIC_RF9: "3"
+      
+      # KitNet analysis topic
+      TOPIC_NAME10: "kitnet-analysis"
+      TOPIC_PARTITIONS10: "1"
+      TOPIC_RF10: "3"
+
+      # KitNet analysis visualization topic
+      TOPIC_NAME11: "kitnet-analysis-viz"
+      TOPIC_PARTITIONS11: "1"
+      TOPIC_RF11: "3"
+
+      # Consensus analysis topic
+      TOPIC_NAME12: "consensus-analysis"
+      TOPIC_PARTITIONS12: "1"
+      TOPIC_RF12: "3"
+
+      # DeepAnT analysis topic
+      TOPIC_NAME13: "deepant-analysis"
+      TOPIC_PARTITIONS13: "1"
+      TOPIC_RF13: "3"
+
+      # DeepAnT analysis visualization topic
+      TOPIC_NAME14: "deepant-analysis-viz"
+      TOPIC_PARTITIONS14: "1"
+      TOPIC_RF14: "3"
+
+      # mDragStream Point-based analysis topic
+      TOPIC_NAME15: "mdragstream-point-analysis"
+      TOPIC_PARTITIONS15: "1"
+      TOPIC_RF15: "3"
+
+      # mDragStream Point-based analysis visualization topic
+      TOPIC_NAME16: "mdragstream-point-analysis-viz"
+      TOPIC_PARTITIONS16: "1"
+      TOPIC_RF16: "3"
+
+      # Explainability v2 analysis topic (isolated second explainability model)
+      TOPIC_NAME17: "explainability-v2"
+      TOPIC_PARTITIONS17: "1"
+      TOPIC_RF17: "3"
+
+      # Explainability v2 visualization topic (JSON for Influx/Telegraf)
+      TOPIC_NAME18: "explainability-v2-viz"
+      TOPIC_PARTITIONS18: "1"
+      TOPIC_RF18: "3"
+
+      # Repeatability test topics (phase 1: generic pair + diff service)
+      TOPIC_NAME19: "repeatability-v1"
+      TOPIC_PARTITIONS19: "1"
+      TOPIC_RF19: "3"
+
+      TOPIC_NAME20: "repeatability-v1-viz"
+      TOPIC_PARTITIONS20: "1"
+      TOPIC_RF20: "3"
+
+      TOPIC_NAME21: "repeatability-v2"
+      TOPIC_PARTITIONS21: "1"
+      TOPIC_RF21: "3"
+
+      TOPIC_NAME22: "repeatability-v2-viz"
+      TOPIC_PARTITIONS22: "1"
+      TOPIC_RF22: "3"
+
+      TOPIC_NAME23: "repeatability-diff"
+      TOPIC_PARTITIONS23: "1"
+      TOPIC_RF23: "3"
+
+      # Reproducibility observability topics (phase 2): results JSON post-comparison.
+      TOPIC_NAME24: "reproducibility-diff"
+      TOPIC_PARTITIONS24: "1"
+      TOPIC_RF24: "3"
+
+      TOPIC_NAME25: "reproducibility-summary"
+      # Precomputed SHAP V1/V2 comparison rows (one event/feature point)
+      TOPIC_NAME26: "explainability-shap-diff"
+      TOPIC_PARTITIONS26: "1"
+      TOPIC_RF26: "3"
+      TOPIC_PARTITIONS25: "1"
+      TOPIC_RF25: "3"
+
+      PIP_CACHE_DIR: "/pip-cache"
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        sleep 15 &&
+        python /app/runtime/bootstrap/init-topic/init-topics.py
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    networks: [kafka-net]     
+
+  producer:
+    build:
+      context: .
+      dockerfile: producer/Dockerfile
+    image: dasma-kafka-producer:0.1.0
+    container_name: producer
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      TOPIC_NAME: "source-data"
+      DATA_SOURCE_FILE: "${DATA_SOURCE_FILE:-data/source-10000.csv}"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      # Delay between message sends, in seconds.
+      TIME_DELAY: "0.0001"
+      PIP_CACHE_DIR: "/pip-cache"
+      # Optional producer mode, for example realtime. Value inherited from the shell.
+      DASMA_PRODUCER_TRANSFORMATION: "${DASMA_PRODUCER_TRANSFORMATION:-}"
+      # Optional comma-separated Group values to keep before Kafka publication.
+      DASMA_SELECTED_GROUPS: "${DASMA_SELECTED_GROUPS:-}"
+      # Columns removed from the source stream before Kafka publication.
+      DASMA_EXCLUDED_FIELDS: "${DASMA_EXCLUDED_FIELDS:-}"
+      # When enabled, the producer waits for an explicit start signal before emitting records.
+      DASMA_PRODUCER_WAIT_FOR_START: "${DASMA_PRODUCER_WAIT_FOR_START:-0}"
+      DASMA_PRODUCER_START_SIGNAL_FILE: "${DASMA_PRODUCER_START_SIGNAL_FILE:-/tmp/dasma-producer-start.signal}"
+
+    networks: [kafka-net]     
+    depends_on: 
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    restart: "no"
+  
+
+  hstree-analysis:
+    build:
+      context: .
+      dockerfile: services/anomaly-light/Dockerfile
+    image: dasma-kafka-anomaly-light:0.1.0
+    container_name: hstree-analysis
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "source-data"
+      KAFKA_DEST_TOPIC: "hstree-analysis"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      # TOPIC 
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      # HSTREE parameters
+      HSTREE_INITIAL_WINDOW_SIZE: "${HSTREE_INITIAL_WINDOW_SIZE:-256}"
+      HSTREE_WINDOW_SIZE: "${HSTREE_WINDOW_SIZE:-256}"
+      HSTREE_NUM_TREES: "${HSTREE_NUM_TREES:-25}"
+      HSTREE_VARIANT: "${HSTREE_VARIANT:-paper}"
+      HSTREE_MAX_DEPTH: "${HSTREE_MAX_DEPTH:-15}"
+      HSTREE_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      HSTREE_ANOMALY_K_SIGMA: "${HSTREE_ANOMALY_K_SIGMA:-3.0}"
+      HSTREE_ANOMALY_MIN_SAMPLES: "${HSTREE_ANOMALY_MIN_SAMPLES:-100}"
+      HSTREE_THRESHOLD_MODE: "${HSTREE_THRESHOLD_MODE:-p99}"
+      HSTREE_THRESHOLD_PERCENTILE: "${HSTREE_THRESHOLD_PERCENTILE:-99.0}"
+      HSTREE_THRESHOLD_WINDOW: "${HSTREE_THRESHOLD_WINDOW:-500}"
+      HSTREE_WELFORD_WINDOW: "${HSTREE_WELFORD_WINDOW:-2048}"
+      ANALYSE_SEED: "${ANALYSE_SEED:-42}"   # For reproducibility.
+      DASMA_ENABLED: "${DASMA_HSTREE_ENABLED:-1}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/detectors/hstree/hstree_analysis.py"]
+    restart: "no"
+
+
+  iforest-analysis:
+    build:
+      context: .
+      dockerfile: services/anomaly-sklearn/Dockerfile
+    image: dasma-kafka-anomaly-sklearn:0.1.0
+    container_name: iforest-analysis
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "source-data"
+      KAFKA_DEST_TOPIC: "iforest-analysis"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+
+      # Reproducibility, important for iForest.
+      ANALYSE_SEED: "${ANALYSE_SEED:-42}"
+
+      # iForest parameters
+      IFOREST_INITIAL_WINDOW_SIZE: "${IFOREST_INITIAL_WINDOW_SIZE:-512}"
+      IFOREST_WINDOW_SIZE: "${IFOREST_WINDOW_SIZE:-2048}"
+      IFOREST_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # scikit-learn IsolationForest parameters (Liu et al., 2008): psi = max_samples, t = n_estimators.
+      IFOREST_N_ESTIMATORS: "${IFOREST_N_ESTIMATORS:-100}"
+      IFOREST_MAX_SAMPLES: "${IFOREST_MAX_SAMPLES:-256}"
+      IFOREST_CONTAMINATION: "${IFOREST_CONTAMINATION:-auto}"
+      IFOREST_REFIT_EVERY: "${IFOREST_REFIT_EVERY:-128}"
+      IFOREST_ANOMALY_K_SIGMA: "${IFOREST_ANOMALY_K_SIGMA:-3.0}"
+      IFOREST_ANOMALY_MIN_SAMPLES: "${IFOREST_ANOMALY_MIN_SAMPLES:-100}"
+      IFOREST_THRESHOLD_MODE: "${IFOREST_THRESHOLD_MODE:-native}"
+      IFOREST_THRESHOLD_PERCENTILE: "${IFOREST_THRESHOLD_PERCENTILE:-99.0}"
+      IFOREST_THRESHOLD_WINDOW: "${IFOREST_THRESHOLD_WINDOW:-500}"
+      IFOREST_WELFORD_WINDOW: "${IFOREST_WELFORD_WINDOW:-2048}"
+
+      LOG_LEVEL: "INFO"
+      DASMA_ENABLED: "${DASMA_IFOREST_ENABLED:-1}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/detectors/iforest/iforest_analysis.py"]
+    restart: "no"
+
+
+  kitnet-analysis:
+    build:
+      context: .
+      dockerfile: services/anomaly-light/Dockerfile
+    image: dasma-kafka-anomaly-light:0.1.0
+    container_name: kitnet-analysis
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "source-data"
+      KAFKA_DEST_TOPIC: "kitnet-analysis"
+      KAFKA_DEST_VIZ_TOPIC: "kitnet-analysis-viz"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+
+      # Reproducibility.
+      ANALYSE_SEED: "42"
+
+      # KitNet parameters (PySAD / KitNET-py)
+      KITNET_MAX_SIZE_AE: "${KITNET_MAX_SIZE_AE:-10}"
+      # Optional: set an integer to force the FM grace period, or "None" to let PySAD manage it.
+      KITNET_GRACE_FEATURE_MAPPING: "${KITNET_GRACE_FEATURE_MAPPING:-1000}"
+      KITNET_GRACE_ANOMALY_DETECTOR: "${KITNET_GRACE_ANOMALY_DETECTOR:-1000}"
+      KITNET_LEARNING_RATE: "${KITNET_LEARNING_RATE:-0.1}"
+      KITNET_HIDDEN_RATIO: "${KITNET_HIDDEN_RATIO:-0.75}"
+      KITNET_CLIP: "${KITNET_CLIP:-10.0}"
+      KITNET_THRESHOLD_MODE: "${KITNET_THRESHOLD_MODE:-welford-windowed}"
+      KITNET_THRESHOLD_WINDOW: "${KITNET_THRESHOLD_WINDOW:-500}"
+      KITNET_WELFORD_WINDOW: "${KITNET_WELFORD_WINDOW:-500}"
+      KITNET_THRESHOLD_PERCENTILE: "${KITNET_THRESHOLD_PERCENTILE:-99.0}"
+      KITNET_ANOMALY_K_SIGMA: "${KITNET_ANOMALY_K_SIGMA:-3.0}"
+      KITNET_ANOMALY_WARMUP_WINDOW: "${KITNET_ANOMALY_WARMUP_WINDOW:-50}"
+      KITNET_ANOMALY_MIN_SAMPLES: "${KITNET_ANOMALY_MIN_SAMPLES:-100}"
+
+      # Fields excluded from the feature vector.
+      KITNET_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      LOG_LEVEL: "INFO"
+      DASMA_ENABLED: "${DASMA_KITNET_ENABLED:-1}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/detectors/kitnet/kitnet_analysis_pysad_cpu.py"]
+    restart: "no"
+
+
+  deepant-analysis:
+    build:
+      context: .
+      dockerfile: services/deepant/Dockerfile
+    image: dasma-kafka-deepant:0.1.0
+    container_name: deepant-analysis
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "source-data"
+      KAFKA_DEST_TOPIC: "deepant-analysis"
+      KAFKA_DEST_VIZ_TOPIC: "deepant-analysis-viz"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+
+      # Reproducibility.
+      ANALYSE_SEED: "42"
+
+      # DeepAnT hyperparameters (CNN predictor)
+      DEEPANT_LOOKBACK_SIZE: "${DEEPANT_LOOKBACK_SIZE:-100}"
+      DEEPANT_INITIAL_WINDOW_SIZE: "${DEEPANT_INITIAL_WINDOW_SIZE:-512}"
+      DEEPANT_REFIT_EVERY: "${DEEPANT_REFIT_EVERY:-128}"
+      DEEPANT_WINDOW_SIZE: "${DEEPANT_WINDOW_SIZE:-2048}"
+      DEEPANT_FILTERS: "${DEEPANT_FILTERS:-32}"
+      DEEPANT_KERNEL_SIZE: "${DEEPANT_KERNEL_SIZE:-2}"
+      DEEPANT_DROPOUT: "${DEEPANT_DROPOUT:-0.25}"
+      DEEPANT_LR: "${DEEPANT_LR:-0.001}"
+      DEEPANT_EPOCHS_INITIAL: "${DEEPANT_EPOCHS_INITIAL:-10}"
+      DEEPANT_EPOCHS_REFIT: "${DEEPANT_EPOCHS_REFIT:-5}"
+      DEEPANT_BATCH_SIZE: "${DEEPANT_BATCH_SIZE:-32}"
+
+      # Fields excluded from the feature vector.
+      DEEPANT_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # Anomaly trigger configuration.
+      DEEPANT_ANOMALY_K_SIGMA: "${DEEPANT_ANOMALY_K_SIGMA:-3.0}"
+      DEEPANT_ANOMALY_MIN_SAMPLES: "${DEEPANT_ANOMALY_MIN_SAMPLES:-100}"
+      DEEPANT_THRESHOLD_MODE: "${DEEPANT_THRESHOLD_MODE:-welford-windowed}"
+      DEEPANT_THRESHOLD_PERCENTILE: "${DEEPANT_THRESHOLD_PERCENTILE:-99.0}"
+      DEEPANT_THRESHOLD_WINDOW: "${DEEPANT_THRESHOLD_WINDOW:-500}"
+      DEEPANT_WELFORD_WINDOW: "${DEEPANT_WELFORD_WINDOW:-2048}"
+
+      DEEPANT_PARALLEL_BY_GROUP: "${DEEPANT_PARALLEL_BY_GROUP:-1}"
+      DEEPANT_MAX_GROUP_WORKERS: "${DEEPANT_MAX_GROUP_WORKERS:-2}"
+      DEEPANT_GROUP_QUEUE_MAXSIZE: "${DEEPANT_GROUP_QUEUE_MAXSIZE:-1000}"
+      DEEPANT_CPU_THREADS_PER_WORKER: "${DEEPANT_CPU_THREADS_PER_WORKER:-1}"
+
+      DASMA_ENABLED: "${DASMA_DEEPANT_ENABLED:-1}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/detectors/deepant/deepant_analysis.py"]
+    restart: "no"
+
+  mdragstream-point-analysis:
+    build:
+      context: .
+      dockerfile: services/anomaly-sklearn/Dockerfile
+    image: dasma-kafka-anomaly-sklearn:0.1.0
+    container_name: mdragstream-point-analysis
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "source-data"
+      KAFKA_DEST_TOPIC: "mdragstream-point-analysis"
+      KAFKA_DEST_VIZ_TOPIC: "mdragstream-point-analysis-viz"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+
+      # Reproducibility.
+      ANALYSE_SEED: "42"
+
+      # mDragStream Point-based parameters.
+      MDRAGPOINT_DYNAMIC_THRESHOLD: "${MDRAGPOINT_DYNAMIC_THRESHOLD:-1}"
+      MDRAGPOINT_LOF_INIT: "${MDRAGPOINT_LOF_INIT:-1}"
+      MDRAGPOINT_N_INIT: "${MDRAGPOINT_N_INIT:-1000}"
+      MDRAGPOINT_MAX_NB_CLUSTERS: "${MDRAGPOINT_MAX_NB_CLUSTERS:-50}"
+      MDRAGPOINT_MAX_CLUSTER_SIZE: "${MDRAGPOINT_MAX_CLUSTER_SIZE:-30}"
+      MDRAGPOINT_METRIC: "${MDRAGPOINT_METRIC:-mahalanobis}"
+      MDRAGPOINT_THRESHOLD_METHOD: "${MDRAGPOINT_THRESHOLD_METHOD:-std}"
+      MDRAGPOINT_THRESHOLD_T: "${MDRAGPOINT_THRESHOLD_T:-2.0}"
+      MDRAGPOINT_LOF_NEIGHBORS: "${MDRAGPOINT_LOF_NEIGHBORS:-20}"
+
+      # Fields excluded from the feature vector.
+      MDRAGPOINT_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # Verdict configuration. Default uses mDragStream's native Point decision.
+      MDRAGPOINT_VERDICT_MODE: "${MDRAGPOINT_VERDICT_MODE:-internal}"
+      MDRAGPOINT_ANOMALY_K_SIGMA: "${MDRAGPOINT_ANOMALY_K_SIGMA:-3.0}"
+      MDRAGPOINT_ANOMALY_MIN_SAMPLES: "${MDRAGPOINT_ANOMALY_MIN_SAMPLES:-100}"
+      MDRAGPOINT_THRESHOLD_MODE: "${MDRAGPOINT_THRESHOLD_MODE:-percentile}"
+      MDRAGPOINT_THRESHOLD_PERCENTILE: "${MDRAGPOINT_THRESHOLD_PERCENTILE:-99.0}"
+      MDRAGPOINT_THRESHOLD_WINDOW: "${MDRAGPOINT_THRESHOLD_WINDOW:-500}"
+      MDRAGPOINT_WELFORD_WINDOW: "${MDRAGPOINT_WELFORD_WINDOW:-900}"
+
+      DASMA_ENABLED: "${DASMA_MDRAGPOINT_ENABLED:-0}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/detectors/mdragpoint/mdragstream_point_analysis.py"]
+    restart: "no"
+
+
+  consensus-analysis:
+    build:
+      context: .
+      dockerfile: services/kafka-tools/Dockerfile
+    image: dasma-kafka-kafka-tools:0.1.0
+    container_name: consensus-analysis
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_DEST_TOPIC: "consensus-analysis"
+      SELECTED_MODELS: "${DASMA_SELECTED_MODELS:-hstree,iforest,kitnet}"
+      CONSENSUS_TIMEOUT_SEC: "${CONSENSUS_TIMEOUT_SEC:-30}"
+      CONSENSUS_RETENTION_SEC: "${CONSENSUS_RETENTION_SEC:-300}"
+      CONSENSUS_LATE_POLICY: "${CONSENSUS_LATE_POLICY:-missing}"
+      DASMA_ENABLED: "${DASMA_CONSENSUS_ENABLED:-1}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+    entrypoint: ["python", "/app/runtime/consensus/consensus_analysis.py"]
+    restart: "no"
+
+  # Repeatability test services (phase 1). The v1/v2 pair runs the same model
+  # twice with identical parameters and seeds; the image and entrypoint are
+  # injected by the campaign env so any model can be tested without new code.
+  # The diff service shell consumes both -viz topics and will publish
+  # score differences once its script exists (step 4).
+  repeatability-v1:
+    image: "${REPEATABILITY_IMAGE:-dasma-kafka-anomaly-light:0.1.0}"
+    container_name: repeatability-v1
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "source-data"
+      KAFKA_DEST_TOPIC: "repeatability-v1"
+      KAFKA_DEST_VIZ_TOPIC: "repeatability-v1-viz"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+
+      # One consumer group per instance; all five model group variables share
+      # the instance group so no model script needs modification.
+      ANALYSE_HSTREE_GROUP_ID: "repeatability-v1-consumer"
+      ANALYSE_IFOREST_GROUP_ID: "repeatability-v1-consumer"
+      ANALYSE_KITNET_GROUP_ID: "repeatability-v1-consumer"
+      ANALYSE_DEEPANT_GROUP_ID: "repeatability-v1-consumer"
+      ANALYSE_MDRAGPOINT_GROUP_ID: "repeatability-v1-consumer"
+
+      # Reproducibility.
+      ANALYSE_SEED: "${ANALYSE_SEED:-42}"
+
+      # HSTree parameters (must mirror the hstree-analysis service).
+      HSTREE_INITIAL_WINDOW_SIZE: "${HSTREE_INITIAL_WINDOW_SIZE:-256}"
+      HSTREE_WINDOW_SIZE: "${HSTREE_WINDOW_SIZE:-256}"
+      HSTREE_NUM_TREES: "${HSTREE_NUM_TREES:-25}"
+      HSTREE_VARIANT: "${HSTREE_VARIANT:-paper}"
+      HSTREE_MAX_DEPTH: "${HSTREE_MAX_DEPTH:-15}"
+      HSTREE_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      HSTREE_ANOMALY_K_SIGMA: "${HSTREE_ANOMALY_K_SIGMA:-3.0}"
+      HSTREE_ANOMALY_MIN_SAMPLES: "${HSTREE_ANOMALY_MIN_SAMPLES:-100}"
+      HSTREE_THRESHOLD_MODE: "${HSTREE_THRESHOLD_MODE:-p99}"
+      HSTREE_THRESHOLD_PERCENTILE: "${HSTREE_THRESHOLD_PERCENTILE:-99.0}"
+      HSTREE_THRESHOLD_WINDOW: "${HSTREE_THRESHOLD_WINDOW:-500}"
+      HSTREE_WELFORD_WINDOW: "${HSTREE_WELFORD_WINDOW:-2048}"
+
+      # iForest parameters (must mirror the iforest-analysis service).
+      IFOREST_INITIAL_WINDOW_SIZE: "${IFOREST_INITIAL_WINDOW_SIZE:-512}"
+      IFOREST_WINDOW_SIZE: "${IFOREST_WINDOW_SIZE:-2048}"
+      IFOREST_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+      IFOREST_N_ESTIMATORS: "${IFOREST_N_ESTIMATORS:-100}"
+      IFOREST_MAX_SAMPLES: "${IFOREST_MAX_SAMPLES:-256}"
+      IFOREST_CONTAMINATION: "${IFOREST_CONTAMINATION:-auto}"
+      IFOREST_REFIT_EVERY: "${IFOREST_REFIT_EVERY:-128}"
+      IFOREST_ANOMALY_K_SIGMA: "${IFOREST_ANOMALY_K_SIGMA:-3.0}"
+      IFOREST_ANOMALY_MIN_SAMPLES: "${IFOREST_ANOMALY_MIN_SAMPLES:-100}"
+      IFOREST_THRESHOLD_MODE: "${IFOREST_THRESHOLD_MODE:-native}"
+      IFOREST_THRESHOLD_PERCENTILE: "${IFOREST_THRESHOLD_PERCENTILE:-99.0}"
+      IFOREST_THRESHOLD_WINDOW: "${IFOREST_THRESHOLD_WINDOW:-500}"
+      IFOREST_WELFORD_WINDOW: "${IFOREST_WELFORD_WINDOW:-2048}"
+
+      # KitNet parameters (must mirror the kitnet-analysis service).
+      KITNET_MAX_SIZE_AE: "${KITNET_MAX_SIZE_AE:-10}"
+      KITNET_GRACE_FEATURE_MAPPING: "${KITNET_GRACE_FEATURE_MAPPING:-1000}"
+      KITNET_GRACE_ANOMALY_DETECTOR: "${KITNET_GRACE_ANOMALY_DETECTOR:-1000}"
+      KITNET_LEARNING_RATE: "${KITNET_LEARNING_RATE:-0.1}"
+      KITNET_HIDDEN_RATIO: "${KITNET_HIDDEN_RATIO:-0.75}"
+      KITNET_CLIP: "${KITNET_CLIP:-10.0}"
+      KITNET_THRESHOLD_MODE: "${KITNET_THRESHOLD_MODE:-welford-windowed}"
+      KITNET_THRESHOLD_WINDOW: "${KITNET_THRESHOLD_WINDOW:-500}"
+      KITNET_WELFORD_WINDOW: "${KITNET_WELFORD_WINDOW:-500}"
+      KITNET_THRESHOLD_PERCENTILE: "${KITNET_THRESHOLD_PERCENTILE:-99.0}"
+      KITNET_ANOMALY_K_SIGMA: "${KITNET_ANOMALY_K_SIGMA:-3.0}"
+      KITNET_ANOMALY_WARMUP_WINDOW: "${KITNET_ANOMALY_WARMUP_WINDOW:-50}"
+      KITNET_ANOMALY_MIN_SAMPLES: "${KITNET_ANOMALY_MIN_SAMPLES:-100}"
+      KITNET_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # DeepAnT parameters (must mirror the deepant-analysis service).
+      DEEPANT_LOOKBACK_SIZE: "${DEEPANT_LOOKBACK_SIZE:-100}"
+      DEEPANT_INITIAL_WINDOW_SIZE: "${DEEPANT_INITIAL_WINDOW_SIZE:-512}"
+      DEEPANT_REFIT_EVERY: "${DEEPANT_REFIT_EVERY:-128}"
+      DEEPANT_WINDOW_SIZE: "${DEEPANT_WINDOW_SIZE:-2048}"
+      DEEPANT_FILTERS: "${DEEPANT_FILTERS:-32}"
+      DEEPANT_KERNEL_SIZE: "${DEEPANT_KERNEL_SIZE:-2}"
+      DEEPANT_DROPOUT: "${DEEPANT_DROPOUT:-0.25}"
+      DEEPANT_LR: "${DEEPANT_LR:-0.001}"
+      DEEPANT_EPOCHS_INITIAL: "${DEEPANT_EPOCHS_INITIAL:-10}"
+      DEEPANT_EPOCHS_REFIT: "${DEEPANT_EPOCHS_REFIT:-5}"
+      DEEPANT_BATCH_SIZE: "${DEEPANT_BATCH_SIZE:-32}"
+      DEEPANT_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+      DEEPANT_ANOMALY_K_SIGMA: "${DEEPANT_ANOMALY_K_SIGMA:-3.0}"
+      DEEPANT_ANOMALY_MIN_SAMPLES: "${DEEPANT_ANOMALY_MIN_SAMPLES:-100}"
+      DEEPANT_THRESHOLD_MODE: "${DEEPANT_THRESHOLD_MODE:-welford-windowed}"
+      DEEPANT_THRESHOLD_PERCENTILE: "${DEEPANT_THRESHOLD_PERCENTILE:-99.0}"
+      DEEPANT_THRESHOLD_WINDOW: "${DEEPANT_THRESHOLD_WINDOW:-500}"
+      DEEPANT_WELFORD_WINDOW: "${DEEPANT_WELFORD_WINDOW:-2048}"
+      DEEPANT_PARALLEL_BY_GROUP: "${DEEPANT_PARALLEL_BY_GROUP:-1}"
+      DEEPANT_MAX_GROUP_WORKERS: "${DEEPANT_MAX_GROUP_WORKERS:-2}"
+      DEEPANT_GROUP_QUEUE_MAXSIZE: "${DEEPANT_GROUP_QUEUE_MAXSIZE:-1000}"
+      DEEPANT_CPU_THREADS_PER_WORKER: "${DEEPANT_CPU_THREADS_PER_WORKER:-1}"
+
+      # mDragStream Point-based parameters (must mirror the mdragstream-point-analysis service).
+      MDRAGPOINT_DYNAMIC_THRESHOLD: "${MDRAGPOINT_DYNAMIC_THRESHOLD:-1}"
+      MDRAGPOINT_LOF_INIT: "${MDRAGPOINT_LOF_INIT:-1}"
+      MDRAGPOINT_N_INIT: "${MDRAGPOINT_N_INIT:-1000}"
+      MDRAGPOINT_MAX_NB_CLUSTERS: "${MDRAGPOINT_MAX_NB_CLUSTERS:-50}"
+      MDRAGPOINT_MAX_CLUSTER_SIZE: "${MDRAGPOINT_MAX_CLUSTER_SIZE:-30}"
+      MDRAGPOINT_METRIC: "${MDRAGPOINT_METRIC:-mahalanobis}"
+      MDRAGPOINT_THRESHOLD_METHOD: "${MDRAGPOINT_THRESHOLD_METHOD:-std}"
+      MDRAGPOINT_THRESHOLD_T: "${MDRAGPOINT_THRESHOLD_T:-2.0}"
+      MDRAGPOINT_LOF_NEIGHBORS: "${MDRAGPOINT_LOF_NEIGHBORS:-20}"
+      MDRAGPOINT_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+      MDRAGPOINT_VERDICT_MODE: "${MDRAGPOINT_VERDICT_MODE:-internal}"
+      MDRAGPOINT_ANOMALY_K_SIGMA: "${MDRAGPOINT_ANOMALY_K_SIGMA:-3.0}"
+      MDRAGPOINT_ANOMALY_MIN_SAMPLES: "${MDRAGPOINT_ANOMALY_MIN_SAMPLES:-100}"
+      MDRAGPOINT_THRESHOLD_MODE: "${MDRAGPOINT_THRESHOLD_MODE:-percentile}"
+      MDRAGPOINT_THRESHOLD_PERCENTILE: "${MDRAGPOINT_THRESHOLD_PERCENTILE:-99.0}"
+      MDRAGPOINT_THRESHOLD_WINDOW: "${MDRAGPOINT_THRESHOLD_WINDOW:-500}"
+      MDRAGPOINT_WELFORD_WINDOW: "${MDRAGPOINT_WELFORD_WINDOW:-900}"
+
+      # Deterministic floating-point and hashing (repeatability requirement):
+      # pin BLAS/OpenMP to a single thread, see docs/models/explainability/v2/explainabilities-problems.md.
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+
+      DASMA_ENABLED: "${DASMA_REPEATABILITY_ENABLED:-0}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/${REPEATABILITY_SCRIPT:-runtime/detectors/hstree/hstree_analysis.py}"]
+    restart: "no"
+
+  repeatability-v2:
+    image: "${REPEATABILITY_IMAGE:-dasma-kafka-anomaly-light:0.1.0}"
+    container_name: repeatability-v2
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "source-data"
+      KAFKA_DEST_TOPIC: "repeatability-v2"
+      KAFKA_DEST_VIZ_TOPIC: "repeatability-v2-viz"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+
+      # One consumer group per instance; all five model group variables share
+      # the instance group so no model script needs modification.
+      ANALYSE_HSTREE_GROUP_ID: "repeatability-v2-consumer"
+      ANALYSE_IFOREST_GROUP_ID: "repeatability-v2-consumer"
+      ANALYSE_KITNET_GROUP_ID: "repeatability-v2-consumer"
+      ANALYSE_DEEPANT_GROUP_ID: "repeatability-v2-consumer"
+      ANALYSE_MDRAGPOINT_GROUP_ID: "repeatability-v2-consumer"
+
+      # Reproducibility.
+      ANALYSE_SEED: "${ANALYSE_SEED:-42}"
+
+      # HSTree parameters (must mirror the hstree-analysis service).
+      HSTREE_INITIAL_WINDOW_SIZE: "${HSTREE_INITIAL_WINDOW_SIZE:-256}"
+      HSTREE_WINDOW_SIZE: "${HSTREE_WINDOW_SIZE:-256}"
+      HSTREE_NUM_TREES: "${HSTREE_NUM_TREES:-25}"
+      HSTREE_VARIANT: "${HSTREE_VARIANT:-paper}"
+      HSTREE_MAX_DEPTH: "${HSTREE_MAX_DEPTH:-15}"
+      HSTREE_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      HSTREE_ANOMALY_K_SIGMA: "${HSTREE_ANOMALY_K_SIGMA:-3.0}"
+      HSTREE_ANOMALY_MIN_SAMPLES: "${HSTREE_ANOMALY_MIN_SAMPLES:-100}"
+      HSTREE_THRESHOLD_MODE: "${HSTREE_THRESHOLD_MODE:-p99}"
+      HSTREE_THRESHOLD_PERCENTILE: "${HSTREE_THRESHOLD_PERCENTILE:-99.0}"
+      HSTREE_THRESHOLD_WINDOW: "${HSTREE_THRESHOLD_WINDOW:-500}"
+      HSTREE_WELFORD_WINDOW: "${HSTREE_WELFORD_WINDOW:-2048}"
+
+      # iForest parameters (must mirror the iforest-analysis service).
+      IFOREST_INITIAL_WINDOW_SIZE: "${IFOREST_INITIAL_WINDOW_SIZE:-512}"
+      IFOREST_WINDOW_SIZE: "${IFOREST_WINDOW_SIZE:-2048}"
+      IFOREST_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+      IFOREST_N_ESTIMATORS: "${IFOREST_N_ESTIMATORS:-100}"
+      IFOREST_MAX_SAMPLES: "${IFOREST_MAX_SAMPLES:-256}"
+      IFOREST_CONTAMINATION: "${IFOREST_CONTAMINATION:-auto}"
+      IFOREST_REFIT_EVERY: "${IFOREST_REFIT_EVERY:-128}"
+      IFOREST_ANOMALY_K_SIGMA: "${IFOREST_ANOMALY_K_SIGMA:-3.0}"
+      IFOREST_ANOMALY_MIN_SAMPLES: "${IFOREST_ANOMALY_MIN_SAMPLES:-100}"
+      IFOREST_THRESHOLD_MODE: "${IFOREST_THRESHOLD_MODE:-native}"
+      IFOREST_THRESHOLD_PERCENTILE: "${IFOREST_THRESHOLD_PERCENTILE:-99.0}"
+      IFOREST_THRESHOLD_WINDOW: "${IFOREST_THRESHOLD_WINDOW:-500}"
+      IFOREST_WELFORD_WINDOW: "${IFOREST_WELFORD_WINDOW:-2048}"
+
+      # KitNet parameters (must mirror the kitnet-analysis service).
+      KITNET_MAX_SIZE_AE: "${KITNET_MAX_SIZE_AE:-10}"
+      KITNET_GRACE_FEATURE_MAPPING: "${KITNET_GRACE_FEATURE_MAPPING:-1000}"
+      KITNET_GRACE_ANOMALY_DETECTOR: "${KITNET_GRACE_ANOMALY_DETECTOR:-1000}"
+      KITNET_LEARNING_RATE: "${KITNET_LEARNING_RATE:-0.1}"
+      KITNET_HIDDEN_RATIO: "${KITNET_HIDDEN_RATIO:-0.75}"
+      KITNET_CLIP: "${KITNET_CLIP:-10.0}"
+      KITNET_THRESHOLD_MODE: "${KITNET_THRESHOLD_MODE:-welford-windowed}"
+      KITNET_THRESHOLD_WINDOW: "${KITNET_THRESHOLD_WINDOW:-500}"
+      KITNET_WELFORD_WINDOW: "${KITNET_WELFORD_WINDOW:-500}"
+      KITNET_THRESHOLD_PERCENTILE: "${KITNET_THRESHOLD_PERCENTILE:-99.0}"
+      KITNET_ANOMALY_K_SIGMA: "${KITNET_ANOMALY_K_SIGMA:-3.0}"
+      KITNET_ANOMALY_WARMUP_WINDOW: "${KITNET_ANOMALY_WARMUP_WINDOW:-50}"
+      KITNET_ANOMALY_MIN_SAMPLES: "${KITNET_ANOMALY_MIN_SAMPLES:-100}"
+      KITNET_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # DeepAnT parameters (must mirror the deepant-analysis service).
+      DEEPANT_LOOKBACK_SIZE: "${DEEPANT_LOOKBACK_SIZE:-100}"
+      DEEPANT_INITIAL_WINDOW_SIZE: "${DEEPANT_INITIAL_WINDOW_SIZE:-512}"
+      DEEPANT_REFIT_EVERY: "${DEEPANT_REFIT_EVERY:-128}"
+      DEEPANT_WINDOW_SIZE: "${DEEPANT_WINDOW_SIZE:-2048}"
+      DEEPANT_FILTERS: "${DEEPANT_FILTERS:-32}"
+      DEEPANT_KERNEL_SIZE: "${DEEPANT_KERNEL_SIZE:-2}"
+      DEEPANT_DROPOUT: "${DEEPANT_DROPOUT:-0.25}"
+      DEEPANT_LR: "${DEEPANT_LR:-0.001}"
+      DEEPANT_EPOCHS_INITIAL: "${DEEPANT_EPOCHS_INITIAL:-10}"
+      DEEPANT_EPOCHS_REFIT: "${DEEPANT_EPOCHS_REFIT:-5}"
+      DEEPANT_BATCH_SIZE: "${DEEPANT_BATCH_SIZE:-32}"
+      DEEPANT_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+      DEEPANT_ANOMALY_K_SIGMA: "${DEEPANT_ANOMALY_K_SIGMA:-3.0}"
+      DEEPANT_ANOMALY_MIN_SAMPLES: "${DEEPANT_ANOMALY_MIN_SAMPLES:-100}"
+      DEEPANT_THRESHOLD_MODE: "${DEEPANT_THRESHOLD_MODE:-welford-windowed}"
+      DEEPANT_THRESHOLD_PERCENTILE: "${DEEPANT_THRESHOLD_PERCENTILE:-99.0}"
+      DEEPANT_THRESHOLD_WINDOW: "${DEEPANT_THRESHOLD_WINDOW:-500}"
+      DEEPANT_WELFORD_WINDOW: "${DEEPANT_WELFORD_WINDOW:-2048}"
+      DEEPANT_PARALLEL_BY_GROUP: "${DEEPANT_PARALLEL_BY_GROUP:-1}"
+      DEEPANT_MAX_GROUP_WORKERS: "${DEEPANT_MAX_GROUP_WORKERS:-2}"
+      DEEPANT_GROUP_QUEUE_MAXSIZE: "${DEEPANT_GROUP_QUEUE_MAXSIZE:-1000}"
+      DEEPANT_CPU_THREADS_PER_WORKER: "${DEEPANT_CPU_THREADS_PER_WORKER:-1}"
+
+      # mDragStream Point-based parameters (must mirror the mdragstream-point-analysis service).
+      MDRAGPOINT_DYNAMIC_THRESHOLD: "${MDRAGPOINT_DYNAMIC_THRESHOLD:-1}"
+      MDRAGPOINT_LOF_INIT: "${MDRAGPOINT_LOF_INIT:-1}"
+      MDRAGPOINT_N_INIT: "${MDRAGPOINT_N_INIT:-1000}"
+      MDRAGPOINT_MAX_NB_CLUSTERS: "${MDRAGPOINT_MAX_NB_CLUSTERS:-50}"
+      MDRAGPOINT_MAX_CLUSTER_SIZE: "${MDRAGPOINT_MAX_CLUSTER_SIZE:-30}"
+      MDRAGPOINT_METRIC: "${MDRAGPOINT_METRIC:-mahalanobis}"
+      MDRAGPOINT_THRESHOLD_METHOD: "${MDRAGPOINT_THRESHOLD_METHOD:-std}"
+      MDRAGPOINT_THRESHOLD_T: "${MDRAGPOINT_THRESHOLD_T:-2.0}"
+      MDRAGPOINT_LOF_NEIGHBORS: "${MDRAGPOINT_LOF_NEIGHBORS:-20}"
+      MDRAGPOINT_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+      MDRAGPOINT_VERDICT_MODE: "${MDRAGPOINT_VERDICT_MODE:-internal}"
+      MDRAGPOINT_ANOMALY_K_SIGMA: "${MDRAGPOINT_ANOMALY_K_SIGMA:-3.0}"
+      MDRAGPOINT_ANOMALY_MIN_SAMPLES: "${MDRAGPOINT_ANOMALY_MIN_SAMPLES:-100}"
+      MDRAGPOINT_THRESHOLD_MODE: "${MDRAGPOINT_THRESHOLD_MODE:-percentile}"
+      MDRAGPOINT_THRESHOLD_PERCENTILE: "${MDRAGPOINT_THRESHOLD_PERCENTILE:-99.0}"
+      MDRAGPOINT_THRESHOLD_WINDOW: "${MDRAGPOINT_THRESHOLD_WINDOW:-500}"
+      MDRAGPOINT_WELFORD_WINDOW: "${MDRAGPOINT_WELFORD_WINDOW:-900}"
+
+      # Deterministic floating-point and hashing (repeatability requirement):
+      # pin BLAS/OpenMP to a single thread, see docs/models/explainability/v2/explainabilities-problems.md.
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+
+      DASMA_ENABLED: "${DASMA_REPEATABILITY_ENABLED:-0}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/${REPEATABILITY_SCRIPT:-runtime/detectors/hstree/hstree_analysis.py}"]
+    restart: "no"
+
+  repeatability-diff:
+    build:
+      context: .
+      dockerfile: services/kafka-tools/Dockerfile
+    image: dasma-kafka-kafka-tools:0.1.0
+    container_name: repeatability-diff
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      REPEATABILITY_VIZ_TOPIC_A: "${REPEATABILITY_VIZ_TOPIC_A:-repeatability-v1-viz}"
+      REPEATABILITY_VIZ_TOPIC_B: "${REPEATABILITY_VIZ_TOPIC_B:-repeatability-v2-viz}"
+      REPEATABILITY_DEST_TOPIC: "${REPEATABILITY_DEST_TOPIC:-repeatability-diff}"
+      REPEATABILITY_GROUP_ID: "${REPEATABILITY_GROUP_ID:-repeatability-diff-consumer}"
+      REPEATABILITY_MODEL_ID: "${REPEATABILITY_MODEL_ID:-hstree}"
+      REPEATABILITY_SCORE_FIELD: "${REPEATABILITY_SCORE_FIELD:-hstree_score}"
+      REPEATABILITY_STATUS_FIELD: "${REPEATABILITY_STATUS_FIELD:-hstree_status}"
+      REPEATABILITY_THRESHOLD_FIELD: "${REPEATABILITY_THRESHOLD_FIELD:-hstree_threshold}"
+      REPEATABILITY_ANOMALY_FIELD: "${REPEATABILITY_ANOMALY_FIELD:-hstree_anomaly}"
+      REPEATABILITY_EXTRA_FIELDS: "${REPEATABILITY_EXTRA_FIELDS:-}"
+      REPEATABILITY_TIMEOUT_SEC: "${REPEATABILITY_TIMEOUT_SEC:-30}"
+      REPEATABILITY_RETENTION_SEC: "${REPEATABILITY_RETENTION_SEC:-300}"
+      DASMA_ENABLED: "${DASMA_REPEATABILITY_ENABLED:-0}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+    entrypoint: ["python", "/app/validation/repeatability/repeatability_diff.py"]
+    restart: "no"
+
+  # Precomputed per-feature SHAP comparison. Disabled by default so existing
+  # campaigns are not changed until this stream is explicitly enabled.
+  explainability-shap-diff:
+    image: dasma-kafka-kafka-tools:0.1.0
+    container_name: explainability-shap-diff
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      SHAP_DIFF_V1_TOPIC: "${SHAP_DIFF_V1_TOPIC:-explainability-viz}"
+      SHAP_DIFF_V2_TOPIC: "${SHAP_DIFF_V2_TOPIC:-explainability-v2-viz}"
+      SHAP_DIFF_DEST_TOPIC: "${SHAP_DIFF_DEST_TOPIC:-explainability-shap-diff}"
+      SHAP_DIFF_GROUP_ID: "${SHAP_DIFF_GROUP_ID:-explainability-shap-diff-consumer}"
+      DASMA_ENABLED: "${DASMA_SHAP_DIFF_ENABLED:-0}"
+      PYTHONPATH: "/app"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+    entrypoint: ["python", "/app/validation/explainability/shap_diff_service.py"]
+    restart: "no"
+
+  # Reproducibility CSV exporter (phase 2): consumes the tested model's viz
+  # topic of a normal campaign and writes the evidence CSV + metadata under
+  # data/reproducibility/<campaign-id>/ on the host. Mount the exporter code
+  # directly, rather than a read-only /app parent with a writable child: that
+  # nested layout is not writable under Docker Desktop. The output bind is
+  # intentionally writable and is excluded from Git.
+  reproducibility-export:
+    image: dasma-kafka-kafka-tools:0.1.0
+    container_name: reproducibility-export
+    working_dir: /app
+    volumes:
+      - ./validation/reproducibility:/app/validation/reproducibility:ro
+      - ./data/reproducibility:/app/data/reproducibility
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      DASMA_ENABLED: "${DASMA_REPRODUCIBILITY_ENABLED:-0}"
+      REPRODUCIBILITY_MODEL_ID: "${REPRODUCIBILITY_MODEL_ID:-}"
+      REPRODUCIBILITY_SOURCE_ROLE: "${REPRODUCIBILITY_SOURCE_ROLE:-}"
+      REPRODUCIBILITY_CAMPAIGN_ID: "${REPRODUCIBILITY_CAMPAIGN_ID:-}"
+      REPRODUCIBILITY_SOURCE_TOPIC: "${REPRODUCIBILITY_SOURCE_TOPIC:-}"
+      REPRODUCIBILITY_GROUP_ID: "${REPRODUCIBILITY_GROUP_ID:-}"
+      REPRODUCIBILITY_OUTPUT_ROOT: "${REPRODUCIBILITY_OUTPUT_ROOT:-/app/data/reproducibility}"
+      REPRODUCIBILITY_IDLE_EXIT_SEC: "${REPRODUCIBILITY_IDLE_EXIT_SEC:-15}"
+      REPRODUCIBILITY_STARTUP_TIMEOUT_SEC: "${REPRODUCIBILITY_STARTUP_TIMEOUT_SEC:-300}"
+      REPRODUCIBILITY_IMAGE: "${REPRODUCIBILITY_IMAGE:-}"
+      REPRODUCIBILITY_CAMPAIGN_PARAMETERS_JSON: "${REPRODUCIBILITY_CAMPAIGN_PARAMETERS_JSON:-}"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+    entrypoint: ["python", "/app/validation/reproducibility/export_topic_to_csv.py"]
+    restart: "no"
+
+  # Reproducibility observability publisher (phase 2): manual one-shot service.
+  # It never starts automatically (no DASMA_ENABLED) and is launched after a
+  # successful comparison with:
+  #   docker compose run --rm --no-deps reproducibility-publish \
+  #     --report /app/data/reproducibility/<campaign-id>/<model>-comparison.csv
+  # --no-deps assumes the platform is running and the topics exist. The read-only
+  # mounts guarantee the command never touches the exports source nor metadata.
+  reproducibility-publish:
+    image: dasma-kafka-kafka-tools:0.1.0
+    container_name: reproducibility-publish
+    working_dir: /app
+    volumes:
+      - ./validation/reproducibility:/app/validation/reproducibility:ro
+      - ./data/reproducibility:/app/data/reproducibility:ro
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      REPRODUCIBILITY_DIFF_TOPIC: "reproducibility-diff"
+      REPRODUCIBILITY_SUMMARY_TOPIC: "reproducibility-summary"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+    entrypoint: ["python", "/app/validation/reproducibility/publish_comparison_to_kafka.py"]
+    restart: "no"
+
+
+  explainability:
+    build:
+      context: .
+      dockerfile: services/explainability/Dockerfile
+    image: dasma-kafka-explainability:0.1.0
+    container_name: explainability
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "${EXPLAINABILITY_SOURCE_TOPIC:-}"
+      EXPLAINABILITY_MODEL: "${EXPLAINABILITY_MODEL:-}"
+      EXPLAINABILITY_MODE: "${EXPLAINABILITY_MODE:-}"
+      EXPLAINABILITY_METHOD: "${EXPLAINABILITY_METHOD:-}"
+      KAFKA_DEST_TOPIC: "explainability"
+      KAFKA_DEST_TOPIC_JSON:  "explainability-viz"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      # HSTree configuration; it must match the HSTree analysis service.
+      HSTREE_INITIAL_WINDOW_SIZE: "${HSTREE_INITIAL_WINDOW_SIZE:-256}"
+      HSTREE_WINDOW_SIZE: "${HSTREE_WINDOW_SIZE:-256}"
+      HSTREE_NUM_TREES: "${HSTREE_NUM_TREES:-25}"
+      HSTREE_VARIANT: "${HSTREE_VARIANT:-paper}"
+      HSTREE_MAX_DEPTH: "${HSTREE_MAX_DEPTH:-15}"
+      ANALYSE_SEED: "${ANALYSE_SEED:-42}"
+      HSTREE_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # IForest configuration; it must match the IForest analysis service.
+      IFOREST_INITIAL_WINDOW_SIZE: "${IFOREST_INITIAL_WINDOW_SIZE:-512}"
+      IFOREST_WINDOW_SIZE: "${IFOREST_WINDOW_SIZE:-2048}"
+      IFOREST_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+      IFOREST_N_ESTIMATORS: "${IFOREST_N_ESTIMATORS:-100}"
+      IFOREST_MAX_SAMPLES: "${IFOREST_MAX_SAMPLES:-256}"
+      IFOREST_CONTAMINATION: "${IFOREST_CONTAMINATION:-auto}"
+      IFOREST_REFIT_EVERY: "${IFOREST_REFIT_EVERY:-128}"
+
+      # KitNET configuration; expressions match the kitnet-analysis service.
+      KITNET_MAX_SIZE_AE: "${KITNET_MAX_SIZE_AE:-10}"
+      KITNET_GRACE_FEATURE_MAPPING: "${KITNET_GRACE_FEATURE_MAPPING:-1000}"
+      KITNET_GRACE_ANOMALY_DETECTOR: "${KITNET_GRACE_ANOMALY_DETECTOR:-1000}"
+      KITNET_LEARNING_RATE: "${KITNET_LEARNING_RATE:-0.1}"
+      KITNET_HIDDEN_RATIO: "${KITNET_HIDDEN_RATIO:-0.75}"
+      KITNET_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # SHAP configuration
+      SHAP_BACKGROUND_SIZE: "100"
+      SHAP_NSAMPLES: "${EXPLAINABILITY_SHAP_NSAMPLES:-100}"
+      SHAP_ENABLED: "true"
+      # Deterministic floating-point: pin BLAS/OpenMP to a single thread so
+      # KernelSHAP's ill-conditioned regression is reproducible across runs.
+      # See docs/models/explainability/v2/explainabilities-problems.md (action 1).
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      DASMA_ENABLED: "${DASMA_EXPLAINABILITY_ENABLED:-1}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]     
+    depends_on: 
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/explainability/regular/explainability-multi-thread-by-group.py"]
+    restart: "no"
+
+  # Isolated second explainability model. Fine copy of the explainability service,
+  # wired to the explainability_v2 package, with its own topics, consumer group,
+  # and kill switch. It never replaces the regular explainability outputs.
+  explainability-v2:
+    build:
+      context: .
+      dockerfile: services/explainability/Dockerfile
+    image: dasma-kafka-explainability:0.1.0
+    container_name: explainability-v2
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - pip-cache:/pip-cache
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      KAFKA_SOURCE_TOPIC: "${EXPLAINABILITY_V2_SOURCE_TOPIC:-}"
+      EXPLAINABILITY_MODEL: "${EXPLAINABILITY_V2_MODEL:-}"
+      EXPLAINABILITY_MODE: "${EXPLAINABILITY_V2_MODE:-}"
+      EXPLAINABILITY_METHOD: "${EXPLAINABILITY_V2_METHOD:-}"
+      KAFKA_DEST_TOPIC: "explainability-v2"
+      KAFKA_DEST_TOPIC_JSON:  "explainability-v2-viz"
+      SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      EXPLAINABILITY_GROUP_ID: "explainability-v2-consumer"
+      TOPIC_PARTITIONS: "1"
+      TOPIC_RF: "3"
+      LOG_LEVEL: "INFO"
+      # HSTree configuration; it must match the HSTree analysis service.
+      HSTREE_INITIAL_WINDOW_SIZE: "${HSTREE_INITIAL_WINDOW_SIZE:-256}"
+      HSTREE_WINDOW_SIZE: "${HSTREE_WINDOW_SIZE:-256}"
+      HSTREE_NUM_TREES: "${HSTREE_NUM_TREES:-25}"
+      HSTREE_VARIANT: "${HSTREE_VARIANT:-paper}"
+      HSTREE_MAX_DEPTH: "${HSTREE_MAX_DEPTH:-15}"
+      ANALYSE_SEED: "${ANALYSE_SEED:-42}"
+      HSTREE_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # IForest configuration; it must match the IForest analysis service.
+      IFOREST_INITIAL_WINDOW_SIZE: "${IFOREST_INITIAL_WINDOW_SIZE:-512}"
+      IFOREST_WINDOW_SIZE: "${IFOREST_WINDOW_SIZE:-2048}"
+      IFOREST_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+      IFOREST_N_ESTIMATORS: "${IFOREST_N_ESTIMATORS:-100}"
+      IFOREST_MAX_SAMPLES: "${IFOREST_MAX_SAMPLES:-256}"
+      IFOREST_CONTAMINATION: "${IFOREST_CONTAMINATION:-auto}"
+      IFOREST_REFIT_EVERY: "${IFOREST_REFIT_EVERY:-128}"
+
+      # KitNET configuration; expressions match the kitnet-analysis service.
+      KITNET_MAX_SIZE_AE: "${KITNET_MAX_SIZE_AE:-10}"
+      KITNET_GRACE_FEATURE_MAPPING: "${KITNET_GRACE_FEATURE_MAPPING:-1000}"
+      KITNET_GRACE_ANOMALY_DETECTOR: "${KITNET_GRACE_ANOMALY_DETECTOR:-1000}"
+      KITNET_LEARNING_RATE: "${KITNET_LEARNING_RATE:-0.1}"
+      KITNET_HIDDEN_RATIO: "${KITNET_HIDDEN_RATIO:-0.75}"
+      KITNET_EXCLUDE_FIELDS: "${DASMA_EXCLUDED_FIELDS:-source_event_id,timestamp,Group,group,Cycle,LabviewTime,time,StepNumber,State (0=OK 1=Warning 2=Error),BackgroundSubtracted(0/1),ActionNumber}"
+
+      # SHAP configuration
+      SHAP_BACKGROUND_SIZE: "100"
+      SHAP_NSAMPLES: "${EXPLAINABILITY_V2_SHAP_NSAMPLES:-100}"
+      SHAP_ENABLED: "true"
+      # Deterministic floating-point: pin BLAS/OpenMP to a single thread so
+      # KernelSHAP's ill-conditioned regression is reproducible across runs.
+      # See docs/models/explainability/v2/explainabilities-problems.md (action 1).
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      DASMA_ENABLED: "${DASMA_EXPLAINABILITY_V2_ENABLED:-0}"
+      PIP_CACHE_DIR: "/pip-cache"
+    networks: [kafka-net]
+    depends_on:
+      init-topic:
+        condition: service_completed_successfully
+      schema-registry:
+        condition: service_healthy
+    entrypoint: ["python", "/app/runtime/explainability/v2/explainability_v2.py"]
+    restart: "no"
+
+  grafana:
+    image: grafana/grafana:12.0.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persistent volume for all Grafana data (users, internal DB, etc.)
+      - grafana-data:/var/lib/grafana
+      # Provisioning (datasources + dashboards.yml)
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      # Dashboard JSON files (in your repository)
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_VIEWERS_CAN_EDIT: "false"
+      GF_EXPLORE_ENABLED: "false"
+      GF_INSTALL_PLUGINS: "hamedkarbasi93-kafka-datasource"
+    networks: [kafka-net]
+    depends_on:
+      kafka1:
+        condition: service_started
+      init-topic:
+        condition: service_completed_successfully
+
+  build-metrics:
+    build:
+      context: .
+      dockerfile: services/kafka-tools/Dockerfile
+    image: dasma-kafka-kafka-tools:0.1.0
+    container_name: build-metrics
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+      init-topic:
+        condition: service_completed_successfully
+    networks:
+      - kafka-net
+    volumes:
+      - ./observability/metrics:/app/observability/metrics:ro
+      - ./src:/app/src:ro
+      - pip-cache:/pip-cache
+    working_dir: /app
+    environment:
+      BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+      METRICS_TOPICS: "source-data,source-data-viz,hstree-analysis,hstree-analysis-viz,iforest-analysis,iforest-analysis-viz,kitnet-analysis,kitnet-analysis-viz,deepant-analysis,deepant-analysis-viz,mdragstream-point-analysis,mdragstream-point-analysis-viz,explainability,explainability-viz,explainability-v2,explainability-v2-viz,consensus-analysis"
+      METRICS_TOPIC_NAME: "topic-metrics"
+      TEMPORISATION: "1"        # In seconds.
+      LOG_LEVEL: "INFO"
+      PIP_CACHE_DIR: "/pip-cache"
+    entrypoint: ["python", "/app/observability/metrics/build-metrics.py"]
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: "setup"
+      DOCKER_INFLUXDB_INIT_USERNAME: "admin"
+      DOCKER_INFLUXDB_INIT_PASSWORD: "adminpass"
+      DOCKER_INFLUXDB_INIT_ORG: "dasma"
+      DOCKER_INFLUXDB_INIT_BUCKET: "topic-metrics"
+      DOCKER_INFLUXDB_INIT_RETENTION: "0"
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "dasma-super-token"
+    networks: [kafka-net]
+    healthcheck:
+      test: ["CMD", "influx", "ping", "--host", "http://localhost:8086"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  influxdb-init-buckets:
+    image: influxdb:2.7
+    container_name: influxdb-init-buckets
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks: [kafka-net]
+    environment:
+      INFLUX_TOKEN: "dasma-super-token"
+      INFLUX_ORG: "dasma"
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        set -e
+        INFLUX_HOST="http://influxdb:8086"
+        echo "[influxdb-init-buckets] watcher started"
+
+        # Wait until InfluxDB is reachable
+        while ! influx ping --host "$${INFLUX_HOST}" >/dev/null 2>&1; do
+          echo "[influxdb-init-buckets] waiting for influxdb at $${INFLUX_HOST} ..."
+          sleep 2
+        done
+
+        ensure_no_retention() {
+          BN="$${1}"
+          echo "[influxdb-init-buckets] ensuring bucket $${BN} ..."
+
+          # Get bucket ID by name (if exists)
+          BID="$$(influx bucket list --host "$${INFLUX_HOST}" --org "$${INFLUX_ORG}" --token "$${INFLUX_TOKEN}" --hide-headers -n "$${BN}" 2>/dev/null | head -n1 | awk '{print $$1}')"
+
+          if [ -n "$${BID}" ]; then
+            influx bucket update --host "$${INFLUX_HOST}" --id "$${BID}" --retention 0 --token "$${INFLUX_TOKEN}" >/dev/null
+          else
+            influx bucket create --host "$${INFLUX_HOST}" --org "$${INFLUX_ORG}" --name "$${BN}" --retention 0 --token "$${INFLUX_TOKEN}" >/dev/null
+          fi
+        }
+
+        ensure_no_retention "topic-metrics"
+
+        # Base topics
+        ensure_no_retention "source-data"
+        ensure_no_retention "hstree-analysis"
+        ensure_no_retention "iforest-analysis"
+        ensure_no_retention "kitnet-analysis"
+        ensure_no_retention "deepant-analysis"
+        ensure_no_retention "mdragstream-point-analysis"
+        ensure_no_retention "explainability"
+        ensure_no_retention "explainability-v2"
+        ensure_no_retention "consensus-analysis"
+        ensure_no_retention "repeatability-v1"
+        ensure_no_retention "repeatability-v2"
+        ensure_no_retention "repeatability-diff"
+        ensure_no_retention "reproducibility-diff"
+        ensure_no_retention "reproducibility-summary"
+        ensure_no_retention "explainability-shap-diff"
+
+        # Viz / bridge topics (JSON via Telegraf/Grafana)
+
+
+        touch /tmp/buckets_ready
+        echo "[influxdb-init-buckets] buckets ensured"
+        echo "[influxdb-init-buckets] done -> exiting"
+    restart: "no"
+
+  influxdb-apply-template:
+    image: influxdb:2.7
+    container_name: influxdb-apply-template
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      influxdb-init-buckets:
+        condition: service_completed_successfully
+    networks: [kafka-net]
+    volumes:
+      - ./observability/influxdb:/templates:ro
+    environment:
+      INFLUX_TOKEN: "dasma-super-token"
+      INFLUX_ORG: "dasma"
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        set -e
+        INFLUX_HOST="http://influxdb:8086"
+        TEMPLATE="/templates/dasma-template.yml"
+
+        echo "[influxdb-apply-template] started"
+
+        # Wait until InfluxDB is reachable
+        while ! influx ping --host "$${INFLUX_HOST}" >/dev/null 2>&1; do
+          echo "[influxdb-apply-template] waiting for influxdb at $${INFLUX_HOST} ..."
+          sleep 2
+        done
+
+        echo "[influxdb-apply-template] influxdb reachable -> applying template"
+        until influx apply --host "$${INFLUX_HOST}" --org "$${INFLUX_ORG}" --token "$${INFLUX_TOKEN}" -f "$${TEMPLATE}" --force yes; do
+          echo "[influxdb-apply-template] apply failed; retrying in 2s..."
+          sleep 2
+        done
+
+        echo "[influxdb-apply-template] template applied"
+        echo "[influxdb-apply-template] done -> exiting"
+    restart: "no"
+
+  telegraf:
+    image: telegraf:1.30
+    container_name: telegraf
+    depends_on:
+      build-metrics:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+      init-topic:
+        condition: service_completed_successfully
+      influxdb-apply-template:
+        condition: service_completed_successfully
+    networks:
+      - kafka-net
+    volumes:
+      - ./observability/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    environment:
+      INFLUX_TOKEN: "dasma-super-token"
+    restart: unless-stopped
+
+  # Optional service — start explicitly with:
+  #   docker compose --profile askmydasma-container up askmydasma-web
+  # or via a dedicated start command. Not started by default.
+  #
+  # WARNING: mounts /var/run/docker.sock — grants the container full control
+  # over the Docker host. Acceptable for local development only.
+  askmydasma-web:
+    build:
+      context: .
+      dockerfile: services/askmydasma/Dockerfile
+    image: dasma-kafka-askmydasma:0.1.0
+    container_name: askmydasma-web
+    profiles: [askmydasma-container]
+    ports:
+      - "8000:8000"
+    environment:
+      ASKMYDASMA_PROJECT_ROOT: /project
+      ASKMYDASMA_SCRIPTS_DIR: /project/scripts
+      ASKMYDASMA_WEB_SCRIPTS_DIR: /project/scripts/web
+      ASKMYDASMA_DATA_DIR: /project/data
+      ASKMYDASMA_TMP_DIR: /project/.tmp
+      ASKMYDASMA_FRONTEND_DIR: /project/frontend/askmydasma
+      ASKMYDASMA_GRAFANA_URL: "http://localhost:3000"
+      COMPOSE_PROJECT_NAME: "${COMPOSE_PROJECT_NAME:-dasma-kafka}"
+      ASKMYDASMA_HOST_PROJECT_ROOT: "${PWD}"
+      PYTHONPATH: "/project/src"
+    volumes:
+      - .:/project:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      grafana:
+        condition: service_started
+    restart: unless-stopped
+    networks: [kafka-net]
+
+networks:
+  kafka-net: {}
+
+volumes:
+  grafana-data: {}
+  pip-cache: {}
+  influxdb-data: {}
