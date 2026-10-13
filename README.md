@@ -139,6 +139,11 @@ Where to look for what:
 
 ## Reference Architecture
 
+![Conceptual AskMyDasma architecture: Kafka connects processing, anomaly detection, explanations and visualization.](docs/assets/askmydasma-architecture.png)
+
+This diagram shows the main roles. The [system architecture guide](docs/architecture/schema.md)
+describes the deployed services, including Telegraf's telemetry routing.
+
 The main Compose file deploys:
 
 - a 3-broker KRaft Kafka cluster: `kafka1`, `kafka2`, `kafka3`
